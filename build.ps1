@@ -36,6 +36,9 @@ if (!(Test-Path (Join-Path $PythonModulesDir "ytmusicapi"))) {
     Write-Host "  py_modules already contains ytmusicapi, skipping install" -ForegroundColor DarkGray
 }
 
+python (Join-Path $ScriptDir "scripts/patch_ytmusicapi.py")
+if ($LASTEXITCODE -ne 0) { throw "ytmusicapi compatibility patch failed" }
+
 # --- Step 2: Build frontend ---
 Write-Host "`n[2/6] Building frontend..." -ForegroundColor Yellow
 Push-Location $ScriptDir

@@ -26,7 +26,9 @@ jobs:
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
       - name: Install Python runtime dependencies
-        run: python -m pip install --target py_modules -r requirements.txt
+        run: |
+          python -m pip install --target py_modules -r requirements.txt
+          python scripts/patch_ytmusicapi.py
       - name: Typecheck and build
         run: |
           pnpm exec tsc --noEmit --skipLibCheck
