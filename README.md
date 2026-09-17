@@ -2,7 +2,7 @@
 
 A Steam Deck plugin that plays YouTube Music from Quick Access and turns the Deck into a YouTube Cast receiver. It combines local playback, queue, library, lyrics, controller-friendly controls, notifications, and Cast discovery on trusted networks.
 
-The current stable version is **0.6.1**. Most users should install the ZIP attached to a Release.
+The current stable version is **0.6.2**. Most users should install the ZIP attached to a Release.
 
 ## Features
 
@@ -31,14 +31,18 @@ The current stable version is **0.6.1**. Most users should install the ZIP attac
 
 ## Quick installation
 
-1. Download `youtube-music-unified-0.6.1.zip` from **Releases**.
+1. Download `youtube-music-unified-0.6.2.zip` from **Releases**.
 2. In Gaming Mode, open Decky → Developer Options → **Install from ZIP**.
 3. Select the ZIP and restart Decky if the previous version is still shown.
-4. Configure authentication in **Settings → Account**.
+4. For Cast, enable your trusted network in **Settings → Cast Receiver**. To use the built-in library, also sign in through **Settings → Account**.
 
 The `-source` ZIP is intended for development.
 
 ## Authentication
+
+**Sign-in is optional for Cast.** Without imported headers, the plugin automatically uses **Cast only** mode. Player and Queue remain available, and Library shows an optional sign-in prompt. Use the Cast menu on another device on the same trusted network to start playback.
+
+Signing in unlocks the built-in library, search, song ratings, and lyrics. Those account features are unavailable in Cast-only mode. This refers to signing in within the plugin; the sending app may have its own account requirements.
 
 The plugin uses browser request headers from an active YouTube Music session. It never stores your Google password. The exported file contains session cookies, so keep it private and never commit it to GitHub.
 

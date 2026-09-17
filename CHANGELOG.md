@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## 0.6.2
+
+- Automatically enable Cast-only mode when signed out; keep Player and Queue accessible.
+- Explain optional account setup in Library and disable account-only actions without cookies.
+- Refresh account access after sign-in/sign-out without polling.
+- Apply the ytmusicapi compatibility patch in clean builds and CI.
+
 ## 0.6.1
 
 - Logo de conexión centrado y más grande.
@@ -18,4 +25,3 @@
 - Altura del panel adaptada al viewport.
 
 Las notas históricas detalladas se conservan en RELEASE-*.md.
-

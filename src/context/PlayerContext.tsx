@@ -68,6 +68,10 @@ export const PlayerProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   // Sync with audio manager on mount (panel open)
   useEffect(() => {
+    const onAuthChanged = (event: Event) => {
+      dispatch({ type:'UPDATE', payload:{ authenticated:(event as CustomEvent<boolean>).detail } });
+    };
+    window.addEventListener('ytm-auth-changed', onAuthChanged);
     // Restore state from audio manager (survives panel close/open)
     const track = getCurrentTrack();
     const playing = getIsPlaying();
@@ -128,6 +132,7 @@ export const PlayerProvider: FC<{ children: ReactNode }> = ({ children }) => {
     );
 
     return () => {
+      window.removeEventListener('ytm-auth-changed', onAuthChanged);
       removeTrack();
       removePlay();
       removeCast();

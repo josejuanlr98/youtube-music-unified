@@ -42,7 +42,9 @@ const AuthContent = () => {
 
   const refresh = async () => {
     try {
-      setAuthState(await call<[], AuthState>('get_auth_state'));
+      const next = await call<[], AuthState>('get_auth_state');
+      setAuthState(next);
+      window.dispatchEvent(new CustomEvent('ytm-auth-changed', { detail:next.authenticated }));
     } catch (e) {
       setError(String(e));
     }
@@ -103,6 +105,9 @@ const AuthContent = () => {
         </Focusable>
       ) : (
         <>
+          <div role="status" style={{ fontSize:13, lineHeight:1.5, marginBottom:16 }}>
+            Cast only is available without signing in. Add your account below to unlock your library, search, likes and lyrics.
+          </div>
           <div style={{
             fontSize: '13px', color: 'var(--gpSystemLighterGrey)', lineHeight: '1.6', marginBottom: '16px'
           }}>

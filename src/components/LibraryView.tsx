@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { FaHeart, FaMusic, FaSearch } from 'react-icons/fa';
 import { playTrack, type TrackInfo } from '../services/audioManager';
 import { Section } from './Section';
+import { usePlayer } from '../context/PlayerContext';
 
 interface PlaylistEntry {
   playlistId: string;
@@ -13,6 +14,20 @@ interface PlaylistEntry {
 }
 
 export const LibraryView = ({ onSwitchToPlayer }: { onSwitchToPlayer?: () => void }) => {
+  const { authenticated } = usePlayer();
+  if (!authenticated) return <Section>
+    <div style={{ padding:16, textAlign:'center' }}>
+      <div style={{ fontWeight:700, marginBottom:8 }}>Cast only</div>
+      <div className="ytm-muted" style={{ fontSize:12, lineHeight:1.5, marginBottom:16 }}>
+        Cast from another device without signing in here. Sign in to access your library, search, likes and lyrics.
+      </div>
+      <DialogButton onClick={() => { Navigation.CloseSideMenus(); Navigation.Navigate('/youtube-music-settings'); }}>Sign in to YouTube Music</DialogButton>
+    </div>
+  </Section>;
+  return <AccountLibrary onSwitchToPlayer={onSwitchToPlayer} />;
+};
+
+const AccountLibrary = ({ onSwitchToPlayer }: { onSwitchToPlayer?: () => void }) => {
   const [playlists, setPlaylists] = useState<PlaylistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingPlaylist, setLoadingPlaylist] = useState<string | null>(null);

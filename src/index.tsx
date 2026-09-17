@@ -1,11 +1,10 @@
-import { ButtonItem, staticClasses, DialogButton, Focusable, Navigation, Tabs } from '@decky/ui';
+import { staticClasses, DialogButton, Focusable, Navigation, Tabs } from '@decky/ui';
 import { definePlugin, routerHook } from '@decky/api';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { FaMusic } from 'react-icons/fa';
+import { memo, useMemo, useState } from 'react';
 import { SiYoutubemusic } from 'react-icons/si';
 import { BsGearFill } from 'react-icons/bs';
 
-import { PlayerProvider, usePlayer } from './context/PlayerContext';
+import { PlayerProvider } from './context/PlayerContext';
 import { PlayerView } from './components/PlayerView';
 import { QueueView } from './components/QueueView';
 import { LibraryView } from './components/LibraryView';
@@ -38,18 +37,6 @@ const installThemeStyles = () => {
 
 const removeThemeStyles = () => document.getElementById(THEME_STYLE_ID)?.remove();
 
-const PaddedButtonItem = (props: React.ComponentProps<typeof ButtonItem>) => {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const first = ref.current?.firstElementChild as HTMLElement | null;
-    if (first) {
-      first.style.paddingLeft = '16px';
-      first.style.paddingRight = '16px';
-    }
-  }, []);
-  return <div ref={ref}><ButtonItem {...props} /></div>;
-};
-
 // Keep Decky's Tabs interaction (including L1/R1) while constraining only our
 // own panel. The ancestor Quick Access layout is left untouched.
 const TabsContainer = memo(() => {
@@ -77,35 +64,8 @@ const TabsContainer = memo(() => {
 });
 TabsContainer.displayName = 'TabsContainer';
 
-const Content = () => <PlayerProvider><PluginContentWrapper /></PlayerProvider>;
-
-const PluginContentWrapper = () => {
-  const { authenticated } = usePlayer();
-
-  // If not authenticated, prompt user to go to settings
-  if (!authenticated) {
-    return (
-      <div>
-        <div style={{ textAlign: 'center', padding: '24px 32px 12px', color: 'var(--gpSystemLighterGrey)' }}>
-          <div style={{ marginBottom: '8px' }}><FaMusic size={32} /></div>
-          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Not Authenticated</div>
-          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-            Set up your YouTube Music credentials in <strong>Settings</strong> to get started.
-          </div>
-        </div>
-        <PaddedButtonItem onClick={() => {
-          Navigation.CloseSideMenus();
-          Navigation.Navigate(SETTINGS_ROUTE);
-        }}>
-          Open Settings
-        </PaddedButtonItem>
-        <div style={{ height: '16px' }} />
-      </div>
-    );
-  }
-
-  return <TabsContainer />;
-};
+// Cast and its queue are available without a YouTube Music account.
+const Content = () => <PlayerProvider><TabsContainer /></PlayerProvider>;
 
 const onSettingsClick = () => {
   Navigation.CloseSideMenus();
