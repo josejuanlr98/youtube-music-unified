@@ -21,9 +21,13 @@ The current stable version is **0.6.1**. Most users should install the ZIP attac
 
 ![Player](screenshots/player.jpeg)
 
+![Player with Cast](screenshots/player-cast.jpeg)
+
+![Player options](screenshots/player-options.jpeg)
+
 ![Queue](screenshots/queue.jpeg)
 
-![Library](screenshots/library.jpeg)
+![Lyrics](screenshots/lyrics.jpeg)
 
 ## Quick installation
 
@@ -115,6 +119,8 @@ This project combines and adapts ideas and code from:
 - [yt-cast-receiver](https://www.npmjs.com/package/yt-cast-receiver): Node implementation of the Cast protocol.
 - [ytmusicapi](https://github.com/sigma67/ytmusicapi): unofficial YouTube Music client.
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp): stream extractor.
+
+Project development and integration were completed with assistance from **Codex by ChatGPT**. **Google Gemini** was used as a secondary consultation resource.
 
 This repository's implementation is released under BSD-3-Clause. Dependencies retain their own licenses. GitHub Actions runs typechecking, builds, and Python/Node tests on every push and pull request.
 
