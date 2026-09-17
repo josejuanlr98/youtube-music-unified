@@ -1,0 +1,10 @@
+# pnpm 11+ build-script and peer dependency configuration
+# esbuild is required by the frontend/backend build and must be allowed to run
+# its install script so pnpm can download/build the native binary.
+allowBuilds:
+  esbuild: true
+
+peerDependencyRules:
+  ignoreMissing:
+    - react
+    - react-dom

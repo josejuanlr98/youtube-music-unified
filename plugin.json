@@ -1,0 +1,17 @@
+{
+  "name": "YouTube Music",
+  "author": "artistro08",
+  "flags": [
+    "_root"
+  ],
+  "api_version": 1,
+  "publish": {
+    "tags": [
+      "music",
+      "youtube",
+      "cast"
+    ],
+    "description": "Play YouTube Music directly on Steam Deck and receive YouTube/YouTube Music Cast sessions.",
+    "image": ""
+  }
+}
