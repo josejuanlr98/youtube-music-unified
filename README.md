@@ -1,24 +1,23 @@
-# YouTube Music Unified para Decky Loader
+# YouTube Music Unified for Decky Loader
 
-Plugin para Steam Deck que reproduce YouTube Music directamente desde Quick Access y convierte la Deck en un receptor de YouTube Cast. Integra reproductor local, cola, biblioteca, letras, controles con mando, notificaciones y descubrimiento Cast en redes de confianza.
+A Steam Deck plugin that plays YouTube Music from Quick Access and turns the Deck into a YouTube Cast receiver. It combines local playback, queue, library, lyrics, controller-friendly controls, notifications, and Cast discovery on trusted networks.
 
-La versión estable actual es **0.6.1**. Para la mayoría de usuarios se recomienda instalar el ZIP de un Release.
+The current stable version is **0.6.1**. Most users should install the ZIP attached to a Release.
 
-## Funciones
+## Features
 
-- Reproducción de canciones y playlists de YouTube Music.
-- Búsqueda con reproducción directa por videoId.
-- Cola con anterior/siguiente, eliminar, reordenar y Play next.
-- Reproducción local y recepción de sesiones de YouTube/YouTube Music Cast.
-- Descubrimiento Cast restringido a redes marcadas como confiables.
-- Nombre del dispositivo Cast configurable.
-- Letras con cruceta y páginas con L1/R1.
-- Sliders de progreso y volumen controlables con mando.
-- Like/dislike, shuffle, repeat y biblioteca de playlists.
-- Notificaciones nativas de Decky al conectarse un dispositivo y cambiar la canción. Cada aviso y sonido se configura por separado; los sonidos vienen desactivados.
-- Stop, Clear & Unlink detiene audio, vacía la cola y termina la sesión Cast actual.
+- Play YouTube Music songs and playlists, with direct videoId search playback.
+- Queue controls: previous, next, remove, reorder, and Play next.
+- Local playback and YouTube / YouTube Music Cast session receiving.
+- Cast discovery restricted to networks marked as trusted.
+- Configurable Cast receiver name.
+- Lyrics navigation with the D-pad and L1/R1 page controls.
+- Gamepad-controlled progress and volume sliders.
+- Like/dislike, shuffle, repeat, and playlist library.
+- Native Decky notifications for device connections and song changes. Each notification and sound is configurable separately; sounds are disabled by default.
+- Stop, Clear & Unlink stops audio, clears the queue, and ends the active Cast session.
 
-## Vista
+## Screenshots
 
 ![Player](screenshots/player.jpeg)
 
@@ -26,49 +25,47 @@ La versión estable actual es **0.6.1**. Para la mayoría de usuarios se recomie
 
 ![Library](screenshots/library.jpeg)
 
-## Instalación rápida
+## Quick installation
 
-1. Descarga `youtube-music-unified-0.6.1.zip` desde **Releases**.
-2. En Gaming Mode abre Decky → Developer Options → **Install from ZIP**.
-3. Selecciona el ZIP y reinicia Decky si la versión anterior todavía aparece.
-4. Configura la autenticación en **Settings → Account**.
+1. Download `youtube-music-unified-0.6.1.zip` from **Releases**.
+2. In Gaming Mode, open Decky → Developer Options → **Install from ZIP**.
+3. Select the ZIP and restart Decky if the previous version is still shown.
+4. Configure authentication in **Settings → Account**.
 
-El ZIP `-source` es para desarrollo.
+The `-source` ZIP is intended for development.
 
-## Autenticación
+## Authentication
 
-El plugin usa headers de una sesión iniciada en YouTube Music. No guarda tu contraseña.
+The plugin uses headers from an active YouTube Music session. It never stores your password.
 
-1. En una PC abre `music.youtube.com` e inicia sesión.
-2. DevTools (F12) → Network: localiza una petición POST a `/browse` con estado 200.
-3. Copia sus request headers a **`yt-music-headers.txt`**.
-4. Transfiere el archivo a `/home/deck/`.
-5. En Settings → Account introduce `/home/deck/yt-music-headers.txt` y pulsa **Load & Connect**.
+1. On a PC, open `music.youtube.com` and sign in.
+2. Open DevTools (F12) → Network and find a successful POST request to `/browse`.
+3. Copy its request headers to **`yt-music-headers.txt`**.
+4. Transfer the file to `/home/deck/` on the Steam Deck.
+5. In Settings → Account, enter `/home/deck/yt-music-headers.txt` and select **Load & Connect**.
 
-Si la sesión expira, vuelve a exportar headers; no hace falta reinstalar el plugin.
+If the session expires, export fresh headers; reinstalling is not required.
 
-## Cast
+## Cast setup
 
-1. Abre Settings → Cast Receiver.
-2. Pulsa **Trust this network** en la red que usarás.
-3. Cambia el nombre del dispositivo si quieres.
-4. En YouTube o YouTube Music elige la Deck desde el botón Cast.
+1. Open Settings → Cast Receiver.
+2. Select **Trust this network** on the network you will use.
+3. Change the receiver name if desired.
+4. In YouTube or YouTube Music, choose the Deck from the Cast button.
 
-Ambos dispositivos deben estar en la misma LAN. El aislamiento de clientes, filtros multicast o algunas redes mesh pueden impedir el descubrimiento.
+Both devices must be on the same LAN. Client isolation, multicast filtering, and some mesh networks can prevent discovery.
 
-## Cola y dispositivo emisor
+## Queue and sender behavior
 
-Durante Cast, la cola recibida del emisor es la fuente inicial. Desde Queue puedes mover una pista o marcarla como siguiente. El receptor conserva ese orden al avanzar, retroceder o terminar la canción. Si el teléfono envía una cola nueva, esa actualización reemplaza el orden local. Algunas aplicaciones pueden seguir mostrando su orden original porque el protocolo no ofrece una operación portable para escribirlo.
+During Cast, the sender's queue is the initial source. From Queue, you can move a track or mark it as next. The receiver keeps that order while advancing, going back, or finishing a song. A new queue sent by the sender replaces the local order. Some apps may continue showing their original order because the protocol does not provide a portable queue-write operation.
 
-Eliminar pistas Cast permanece en el emisor. Las colas con videoId duplicados también deben ordenarse allí.
+## Notifications
 
-## Notificaciones
+Settings → Notifications provides independent switches for **Device connected**, **Connection sound**, **Now playing**, and **Song change sound**. Notifications use Decky's native Steam UI, include the device name or album art/title/artist, and work with Quick Access closed. They do not add a polling process or duplicate pause/resume alerts.
 
-En Settings → Notifications se configuran **Device connected**, **Connection sound**, **Now playing** y **Song change sound**. Usan el sistema nativo de Decky/Steam, incluyen nombre o portada/título/artista y funcionan con Quick Access cerrado. No añaden un proceso de sondeo. Pausa y reanudación no generan avisos duplicados.
+## Build on Windows
 
-## Compilar desde Windows
-
-Requisitos: Node.js, pnpm y PowerShell.
+Requirements: Node.js, pnpm, Python, and PowerShell.
 
 ```powershell
 pnpm install
@@ -77,15 +74,14 @@ pnpm run build:backend
 pnpm run package
 ```
 
-`build.ps1` instala `ytmusicapi` en `py_modules/` y descarga Node Linux y
-yt-dlp standalone cuando faltan. Las pruebas:
+`build.ps1` installs `ytmusicapi` into `py_modules/` and downloads Linux Node.js and yt-dlp binaries when missing. Run tests with:
 
 ```powershell
 pnpm test
 pnpm run test:python
 ```
 
-El ZIP contiene la estructura compatible con Decky:
+The package uses this Decky-compatible layout:
 
 ```text
 YouTube Music/
@@ -100,41 +96,38 @@ YouTube Music/
   bin/yt-dlp
 ```
 
-## Arquitectura
+## Architecture
 
-- `src/`: interfaz React/TypeScript de Quick Access.
-- `src/services/audioManager.ts`: audio persistente, Cast WebSocket, progreso y eventos.
-- `src/services/notifications.tsx`: preferencias y avisos nativos.
-- `main.py`: autenticación, biblioteca, reproducción local y cola local.
-- `backend/src/`: receptor Cast Node y operaciones de cola.
-- `py_modules/`: dependencias Python vendorizadas.
-- `bin/`: binarios Linux del paquete.
+- `src/`: React/TypeScript Quick Access interface.
+- `src/services/audioManager.ts`: persistent audio, Cast WebSocket, progress, and events.
+- `src/services/notifications.tsx`: notification preferences and native alerts.
+- `main.py`: authentication, library, local playback, and local queue.
+- `backend/src/`: Node Cast receiver and queue operations.
+- `py_modules/`: vendored Python dependencies.
+- `bin/`: Linux binaries included in the package.
 
-## Origen y créditos
+## Origin and credits
 
-Este proyecto combina y adapta ideas y código de:
+This project combines and adapts ideas and code from:
 
-- [decky-youtube-music-player](https://github.com/artistro08/decky-youtube-music-player): reproductor, autenticación, biblioteca y controles.
-- [youtube-cast-receiver](https://github.com/artistro08/youtube-cast-receiver): receptor Cast, especialmente el release [v0.4.1](https://github.com/artistro08/youtube-cast-receiver/releases/tag/v0.4.1).
-- [yt-cast-receiver](https://www.npmjs.com/package/yt-cast-receiver): biblioteca Node del protocolo Cast.
-- [ytmusicapi](https://github.com/sigma67/ytmusicapi): cliente no oficial de YouTube Music.
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp): extractor de streams.
+- [decky-youtube-music-player](https://github.com/artistro08/decky-youtube-music-player): player, authentication, library, and controls.
+- [youtube-cast-receiver](https://github.com/artistro08/youtube-cast-receiver): Cast receiver, especially [release v0.4.1](https://github.com/artistro08/youtube-cast-receiver/releases/tag/v0.4.1).
+- [yt-cast-receiver](https://www.npmjs.com/package/yt-cast-receiver): Node implementation of the Cast protocol.
+- [ytmusicapi](https://github.com/sigma67/ytmusicapi): unofficial YouTube Music client.
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp): stream extractor.
 
-La implementación de este repositorio usa BSD-3-Clause. Las dependencias conservan sus propias licencias.
+This repository's implementation is released under BSD-3-Clause. Dependencies retain their own licenses. GitHub Actions runs typechecking, builds, and Python/Node tests on every push and pull request.
 
-Las contribuciones pasan por GitHub Actions, que ejecuta el typecheck, la
-compilación y las pruebas de Python/Node en cada push y pull request.
+## Troubleshooting
 
-## Solución de problemas
+**Not authenticated:** verify the path and export fresh `yt-music-headers.txt`.
 
-**No autenticado:** comprueba la ruta y vuelve a exportar `yt-music-headers.txt`.
+**The Deck does not appear for Cast:** verify the same network, Trust this network, and router isolation/multicast settings.
 
-**La Deck no aparece para Cast:** comprueba misma red, Trust this network y aislamiento/multicast del router.
+**The queue returns to its previous order:** the sender sent a new queue update.
 
-**La cola vuelve a su orden anterior:** el emisor envió una actualización nueva.
+**Lyrics unavailable:** some songs do not provide lyrics.
 
-**Lyrics no disponibles:** algunas canciones no publican letras.
+## License
 
-## Licencia
-
-BSD-3-Clause. Consulta [LICENSE](LICENSE).
+BSD-3-Clause. See [LICENSE](LICENSE).
