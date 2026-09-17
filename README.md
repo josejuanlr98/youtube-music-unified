@@ -122,6 +122,9 @@ Este proyecto combina y adapta ideas y código de:
 
 La implementación de este repositorio usa BSD-3-Clause. Las dependencias conservan sus propias licencias.
 
+Las contribuciones pasan por GitHub Actions, que ejecuta el typecheck, la
+compilación y las pruebas de Python/Node en cada push y pull request.
+
 ## Solución de problemas
 
 **No autenticado:** comprueba la ruta y vuelve a exportar `yt-music-headers.txt`.

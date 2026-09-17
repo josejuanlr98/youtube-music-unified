@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Python runtime dependencies
+        run: python -m pip install --target py_modules -r requirements.txt
+      - name: Typecheck and build
+        run: |
+          pnpm exec tsc --noEmit --skipLibCheck
+          pnpm run build
+          pnpm run build:backend
+      - name: Test
+        run: |
+          pnpm test
+          pnpm run test:python
