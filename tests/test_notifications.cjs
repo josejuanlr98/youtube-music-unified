@@ -9,17 +9,29 @@ const listeners = {};
 let stored = { connections:true, tracks:true, connectionSound:false, trackSound:false };
 const toasts = [];
 let dismissed = 0;
+const sounded = [];
+const queued = [];
+// Model Steam's queued-toast path: it reselects sound by notification type,
+// ignoring the per-toast playSound setting unless our playback guard stops it.
+const originalSound = function(notification) { assert.equal(this, notificationStore); sounded.push(notification); return 'played'; };
+const notificationStore = { PlayNotificationSound:originalSound };
+const patcher = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../node_modules/@decky/ui/src/utils/patcher.ts'), 'utf8'), {
+  compilerOptions:{ module:ts.ModuleKind.CommonJS, target:ts.ScriptTarget.ES2022 }
+}).outputText, { exports:patcher, console:{ debug:() => {} } });
+const flushSounds = () => { while (queued.length) notificationStore.PlayNotificationSound(queued.shift()); };
 const timers = new Map();
 const listen = key => fn => { listeners[key] = fn; return () => { delete listeners[key]; }; };
 const modules = {
   '@decky/api': { call:async (method, value) => { if (method.startsWith('set_')) stored = value; return { ...stored }; },
-    toaster:{ toast:data => { toasts.push(data); return { data, dismiss:() => { dismissed++; } }; } } },
+    toaster:{ toast:data => { toasts.push(data); queued.push({ decky:true, data, eType:31 }); return { data, dismiss:() => { dismissed++; } }; } } },
+  '@decky/ui':patcher,
   'react/jsx-runtime':{ jsx:(type, props) => ({ type, props }) },
   'react-icons/si':{ SiYoutubemusic:'icon' },
   './audioManager':{ addPlaybackStartedListener:listen('playing'), addSenderConnectedListener:listen('sender'), addTrackChangeListener:listen('track') },
 };
 vm.runInNewContext(ts.transpileModule(source, { compilerOptions:{ module:ts.ModuleKind.CommonJS, jsx:ts.JsxEmit.ReactJSX, target:ts.ScriptTarget.ES2022 } }).outputText, {
-  exports:exportsObject, require:name => { assert(name in modules, name); return modules[name]; }, console,
+  exports:exportsObject, require:name => { assert(name in modules, name); return modules[name]; }, console, window:{ NotificationStore:notificationStore },
   setTimeout:fn => { const id = timers.size + 1; timers.set(id, fn); return id; }, clearTimeout:id => timers.delete(id),
 });
 (async () => {
@@ -33,16 +45,35 @@ vm.runInNewContext(ts.transpileModule(source, { compilerOptions:{ module:ts.Modu
   listeners.playing(track);
   assert.equal(toasts[1].title, 'Song'); assert.equal(toasts[1].body, 'Artist');
   assert.equal(toasts[1].logo.props.src, track.albumArt); assert.equal(toasts[1].playSound, false);
+  flushSounds(); assert.equal(sounded.length, 0, 'silent defaults must suppress actual Steam sound playback');
   listeners.playing(track); listeners.playing(track);
   assert.equal(toasts.length, 2, 'resume and repeated state/stream messages must not duplicate a song');
   await exportsObject.saveNotificationSettings({ ...stored, tracks:false, connectionSound:true });
   listeners.playing({ ...track, videoId:'two' });
   assert.equal(toasts.length, 2);
   listeners.sender('Tablet'); assert.equal(toasts.at(-1).playSound, true);
+  flushSounds(); assert.equal(sounded.length, 1);
   await exportsObject.saveNotificationSettings({ ...stored, tracks:true, trackSound:true, connections:false });
   listeners.sender('Muted device'); assert.equal(toasts.length, 3);
   listeners.playing({ ...track, videoId:'three' }); assert.equal(toasts.at(-1).playSound, true);
+  flushSounds(); assert.equal(sounded.length, 2);
+  await exportsObject.saveNotificationSettings({ ...stored, connections:true, connectionSound:false, trackSound:true });
+  listeners.sender('Silent device');
+  listeners.playing({ ...track, videoId:'four' });
+  flushSounds(); assert.equal(sounded.length, 3, 'connection and song sound preferences are independent');
+  await exportsObject.saveNotificationSettings({ ...stored, connectionSound:true, trackSound:false });
+  listeners.sender('Audible device');
+  listeners.playing({ ...track, videoId:'five' });
+  flushSounds(); assert.equal(sounded.length, 4, 'turning song sound off must take effect immediately');
+  await exportsObject.saveNotificationSettings({ ...stored, connectionSound:false });
+  listeners.sender('Queued silent');
+  await exportsObject.saveNotificationSettings({ ...stored, connectionSound:true });
+  flushSounds(); assert.equal(sounded.length, 4, 'queued notifications retain the setting used when created');
+  assert.equal(notificationStore.PlayNotificationSound({ eType:31, data:{} }), 'played');
+  assert.equal(notificationStore.PlayNotificationSound({ decky:true, data:{ playSound:false } }), 'played');
+  assert.equal(sounded.length, 6, 'Steam achievements and other plugins are untouched');
   assert(dismissed > 0, 'fast events must bound active toasts');
   stop(); assert.equal(Object.keys(listeners).length, 0); assert.equal(timers.size, 0);
+  assert.equal(notificationStore.PlayNotificationSound, originalSound, 'unload restores native sound playback');
   console.log('PASS notifications: silent defaults, independent toggles/sounds, metadata, deduplication, bounded toasts and cleanup');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.6.3
+
+- Respect independent connection and track notification sound preferences when Steam displays queued toasts.
+- Preserve sounds for Steam achievements and other plugins; remove the compatibility hook on plugin unload.
+
 ## 0.6.2
 
 - Automatically enable Cast-only mode when signed out; keep Player and Queue accessible.

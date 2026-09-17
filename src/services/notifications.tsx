@@ -1,4 +1,5 @@
 import { call, toaster } from '@decky/api';
+import { callOriginal, replacePatch, type Patch } from '@decky/ui';
 import { SiYoutubemusic } from 'react-icons/si';
 import { addPlaybackStartedListener, addSenderConnectedListener, addTrackChangeListener } from './audioManager';
 
@@ -32,14 +33,30 @@ export async function saveNotificationSettings(value: NotificationSettings) {
 export function initNotifications() {
   let lastTrack = '';
   let alive = true;
+  let soundPatch: Patch | undefined;
+  const ensureSoundPatch = () => {
+    if (soundPatch) return;
+    const store = (window as unknown as { NotificationStore?: { PlayNotificationSound?: (...args: any[]) => unknown } }).NotificationStore;
+    if (typeof store?.PlayNotificationSound !== 'function') throw new Error('Steam notification sound hook is unavailable');
+    // Steam's queued-toast path selects sound by eType again, discarding the
+    // playSound option Decky passed to ProcessNotification. Filter only our
+    // explicitly silent toasts at the final playback method, including delayed ones.
+    soundPatch = replacePatch(store, 'PlayNotificationSound', (args: any[]) => {
+      const notification = args[0];
+      if (notification?.decky && notification.data?.ytmNotification === true && notification.data.playSound === false) return;
+      return callOriginal;
+    });
+  };
   const active = new Set<ReturnType<typeof toaster.toast>>();
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const toast = (data: Parameters<typeof toaster.toast>[0]) => {
     if (!alive || !ready) return;
     try {
+      ensureSoundPatch();
       // Keep fast skips from filling the Steam notification queue.
       if (active.size >= 2) { const oldest = active.values().next().value; oldest?.dismiss(); if (oldest) active.delete(oldest); }
-      const item = toaster.toast({ ...data, duration:5000, showToast:true, showNewIndicator:false });
+      const payload = { ...data, ytmNotification:true, duration:5000, showToast:true, showNewIndicator:false };
+      const item = toaster.toast(payload);
       active.add(item);
       const timer = setTimeout(() => { active.delete(item); timers.delete(timer); }, 6000);
       timers.add(timer);
@@ -60,5 +77,5 @@ export function initNotifications() {
     }),
   ];
   void loadNotificationSettings().catch(error => console.warn('[YTM] Could not load notification preferences', error));
-  return () => { alive = false; ready = false; removers.forEach(remove => remove()); timers.forEach(clearTimeout); active.forEach(item => item.dismiss()); };
+  return () => { alive = false; ready = false; removers.forEach(remove => remove()); timers.forEach(clearTimeout); active.forEach(item => item.dismiss()); soundPatch?.unpatch(); };
 }
