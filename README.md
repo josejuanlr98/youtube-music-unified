@@ -40,15 +40,35 @@ The `-source` ZIP is intended for development.
 
 ## Authentication
 
-The plugin uses headers from an active YouTube Music session. It never stores your password.
+The plugin uses browser request headers from an active YouTube Music session. It never stores your Google password. The exported file contains session cookies, so keep it private and never commit it to GitHub.
 
-1. On a PC, open `music.youtube.com` and sign in.
-2. Open DevTools (F12) → Network and find a successful POST request to `/browse`.
-3. Copy its request headers to **`yt-music-headers.txt`**.
-4. Transfer the file to `/home/deck/` on the Steam Deck.
-5. In Settings → Account, enter `/home/deck/yt-music-headers.txt` and select **Load & Connect**.
+### Step 1: Export the headers
 
-If the session expires, export fresh headers; reinstalling is not required.
+1. On your PC, open a browser, go to `https://music.youtube.com`, and sign in.
+2. Open Developer Tools with **F12**, then select the **Network** tab.
+3. Click around YouTube Music (opening **Library** is a reliable way to generate the request).
+4. Find a successful **POST** request to `/browse` with status **200**.
+5. Copy the request headers:
+   - **Firefox:** right-click the request → **Copy → Copy Request Headers**.
+   - **Chrome/Edge:** open the request, find **Request Headers**, and copy the headers starting at `accept: */*`.
+6. Paste the result into a plain-text file named exactly **`yt-music-headers.txt`**. Do not add Markdown formatting or remove the `cookie:` header.
+
+### Step 2: Transfer the file to the Deck
+
+Copy `yt-music-headers.txt` to `/home/deck/`. You can use a USB drive, file sharing, or SSH/SCP:
+
+```bash
+scp yt-music-headers.txt deck@steamdeck:/home/deck/yt-music-headers.txt
+```
+
+### Step 3: Connect the plugin
+
+1. Open YouTube Music Unified in Decky and select the **gear** icon.
+2. Open **Settings → Account**.
+3. Enter `/home/deck/yt-music-headers.txt` as the headers path.
+4. Select **Load & Connect** and wait for the **Authenticated** status.
+
+If authentication expires, repeat the export and replace the file. Reinstalling the plugin is not required. Browser credentials commonly last a long time, but Google can invalidate them at any time.
 
 ## Cast setup
 
