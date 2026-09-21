@@ -868,11 +868,10 @@ class Plugin:
                 return {"lyrics": None, "source": None, "hasTimestamps": False}
             lyrics = self.ytmusic.get_lyrics(browse_id, timestamps=False)
             if not lyrics:
-                return {"lyrics": None, "source": None, "hasTimestamps": False}
+                return {"lyrics": None, "source": None}
             return {
                 "lyrics": lyrics.get("lyrics") if isinstance(lyrics, dict) else str(lyrics),
                 "source": lyrics.get("source") if isinstance(lyrics, dict) else None,
-                "hasTimestamps": bool(lyrics.get("hasTimestamps")) if isinstance(lyrics, dict) else False,
             }
         except Exception as e:
             decky.logger.error(f"Failed to get lyrics for {video_id}: {e}")

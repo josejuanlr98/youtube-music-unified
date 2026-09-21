@@ -21,7 +21,7 @@ function load(file) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/components', file), 'utf8'), {
     compilerOptions:{ module:ts.ModuleKind.CommonJS, jsx:ts.JsxEmit.ReactJSX }
-  }).outputText, { exports, require:name => {
+  }).outputText, { exports, window:{addEventListener(){},removeEventListener(){}}, require:name => {
     if (name.startsWith('react-icons/')) return new Proxy({}, { get:(_, key) => key });
     assert(name in modules, name); return modules[name];
   } });

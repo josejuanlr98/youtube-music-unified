@@ -43,6 +43,8 @@ const routes: Record<string, Record<string, RouteHandler>> = {
               artist: trackInfo.artist,
               albumArt: trackInfo.albumArt,
               duration: trackInfo.duration,
+              url: trackInfo.url,
+              playbackId: ctx.castPlayer.getPlaybackId(),
             }
           : null,
         isPlaying: ctx.castPlayer.isCurrentlyPlaying(),

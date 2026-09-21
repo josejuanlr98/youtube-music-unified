@@ -53,6 +53,7 @@ async function castTests() {
   let finish;
   let extract = () => new Promise(resolve => { finish = resolve; });
   const { CastPlayer } = load('backend/src/CastPlayer.ts', {
+    'node:crypto': require('node:crypto'),
     'yt-cast-receiver': { Player: class {}, Constants:{} },
     './ytdlp.js': { extractAudioInfo: () => extract() },
   }, { setTimeout: fn => { timers.push(fn); } });
@@ -65,7 +66,8 @@ async function castTests() {
   assert.equal(player.isCurrentlyPlaying(), false);
   console.log('PASS pending Cast extraction cannot resume after unlink');
   extract = async () => ({ videoId:'song', title:'Song', duration:100 });
-  await player.doPlay({ id:'song' }, 0);
+  player.activePlayRequest = player.playRequest;
+  assert.equal(await player.doPlay({ id:'song' }, 0), true);
   player.clearOnDisconnect();
   timers.forEach(fn => fn());
   assert.equal(events.filter(e => e.event === 'track').length, 0);
@@ -93,8 +95,8 @@ function lyricsTests() {
     'react/jsx-runtime': { jsx, jsxs:jsx },
     'react': { useState: value => [typeof value === 'function' ? value() : value, () => {}], useEffect() {}, useRef:() => ({ current:scroll }) },
     '@decky/ui': { DialogButton:'button', Focusable:'div', GamepadButton:{ DIR_UP:9, DIR_DOWN:10, BUMPER_LEFT:5, BUMPER_RIGHT:6 }, Navigation:{ NavigateBack() { back++; }, OpenQuickAccessMenu() {} }, QuickAccessTab:{ Decky:1 } },
-    'react-icons/fa': { FaArrowLeft:'i', FaChevronUp:'i', FaChevronDown:'i', FaMusic:'i' },
-    '../services/audioManager': { getCurrentTrack:() => ({ videoId:'test', title:'Test', artist:'Artist' }), addTrackChangeListener:() => () => {} },
+    'react-icons/fa': { FaArrowLeft:'i', FaChevronUp:'i', FaChevronDown:'i', FaMusic:'i', FaExpand:'i' },
+    '../services/audioManager': { getCurrentTrack:() => ({ videoId:'test', title:'Test', artist:'Artist' }), addTrackChangeListener:() => () => {}, addProgressListener:() => () => {}, getProgress:() => ({ position:0 }) },
     '../theme': { themeCss: '' },
     '../services/lyrics': { loadLyrics:async () => ({ lyrics:'Test' }) },
     '../services/focus': { focusLyricsReader:() => () => {} },

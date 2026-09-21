@@ -1,4 +1,5 @@
 import { Player, Constants } from 'yt-cast-receiver';
+import { randomUUID } from 'node:crypto';
 import type { Volume, Video } from 'yt-cast-receiver';
 import { extractAudioInfo, type AudioInfo } from './ytdlp.js';
 import type { WsManager } from './wsManager.js';
@@ -22,6 +23,13 @@ export class CastPlayer extends Player {
   private lastSenderActivity: number = 0;
   private sessionCleared: boolean = true;
   private playbackGeneration = 0;
+  private playbackId: string | null = null;
+  private endedPlaybackId: string | null = null;
+  private retryingPlaybackId: string | null = null;
+  private lastSenderSync = 0;
+  private playRequest = 0;
+  private activePlayRequest = 0;
+  private playChain: Promise<void> = Promise.resolve();
   private deckOrder: string[] | null = null;
 
   /** An incoming sender playlist takes priority over a Deck-side arrangement. */
@@ -67,7 +75,12 @@ export class CastPlayer extends Player {
   }
 
   override async getState() {
-    const state = await super.getState();
+    const original = await super.getState();
+    // Playlist updates mutate context.index in place. Preserve a snapshot so
+    // the receiver can still compare it with the next state correctly.
+    const state = { ...original, queue:{ ...original.queue,
+      videoIds:[...original.queue.videoIds], current:original.queue.current
+        ? { ...original.queue.current, context:{ ...original.queue.current.context } } : null } };
     if (!this.deckOrder) return state;
     const position = this.deckOrder.indexOf(state.queue.current?.id ?? '');
     return { ...state, queue:{ ...state.queue, videoIds:[...this.deckOrder],
@@ -76,7 +89,15 @@ export class CastPlayer extends Player {
   }
 
   override async next(AID?: number | null): Promise<boolean> {
-    if (!this.deckOrder) return super.next(AID);
+    if (!this.deckOrder) {
+      const state = this.queue.getState();
+      const index = this.queue.videoIds.indexOf(state.current?.id ?? '');
+      const nextId = index >= 0 ? this.queue.videoIds[index + 1] : undefined;
+      // setAsCurrent() does not refresh the library's cached neighbours after
+      // a Deck queue jump. Do not replay a stale cached next/previous song.
+      if (nextId && !this.queue.isUpdating && state.next?.id !== nextId) return this.playVideoById(nextId);
+      return super.next(AID);
+    }
     const position = this.deckOrder.indexOf(this.queue.current?.id ?? '');
     const video = position >= 0 ? this.orderedVideo(position + 1) : null;
     if (video) return this.play(video, 0, AID);
@@ -85,9 +106,30 @@ export class CastPlayer extends Player {
   }
 
   override async previous(AID?: number | null): Promise<boolean> {
-    if (!this.deckOrder) return super.previous(AID);
+    if (!this.deckOrder) {
+      const state = this.queue.getState();
+      const index = this.queue.videoIds.indexOf(state.current?.id ?? '');
+      const previousId = index > 0 ? this.queue.videoIds[index - 1] : undefined;
+      if (previousId && !this.queue.isUpdating && state.previous?.id !== previousId) return this.playVideoById(previousId);
+      return super.previous(AID);
+    }
     const video = this.orderedVideo(this.deckOrder.indexOf(this.queue.current?.id ?? '') - 1);
     return video ? this.play(video, 0, AID) : false;
+  }
+
+  override play(video: Video, position?: number, AID?: number | null): Promise<boolean> {
+    const request = ++this.playRequest;
+    // Cancel extraction for a superseded request, then let the library finish
+    // its status transition before the newest play begins. Otherwise an old
+    // failed extraction can set STOPPED after a newer song is already playing.
+    this.playbackGeneration++;
+    const operation = this.playChain.then(() => {
+      if (request !== this.playRequest) return false;
+      this.activePlayRequest = request;
+      return super.play(video, position, AID);
+    });
+    this.playChain = operation.then(() => {}, () => {});
+    return operation;
   }
   private metadataCache: Map<string, AudioInfo> = new Map();
   private volumeBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -109,16 +151,40 @@ export class CastPlayer extends Player {
    * Called by frontend via WebSocket 'progress' messages.
    * Updates position/duration so the library can relay to the phone.
    */
-  updateProgress(currentTime: number, duration: number): void {
+  getPlaybackId(): string | null { return this.playbackId; }
+
+  private matchesPlayback(id: unknown): boolean {
+    return typeof id === 'string' && id === this.playbackId &&
+      !this.sessionCleared && !!this.currentTrackInfo;
+  }
+
+  async syncSender(id: unknown): Promise<void> {
+    if (!this.matchesPlayback(id)) return;
+    const current = await this.getState();
+    if (!this.matchesPlayback(id) || current.queue.current?.id !== this.currentTrackInfo?.videoId) return;
+    this.lastSenderSync = Date.now();
+    // A full snapshot makes the receiver resend nowPlaying, including after a
+    // lost notification. A normal state diff can omit the unchanged video ID.
+    this.emit('state', { current, previous:null });
+  }
+
+  updateProgress(currentTime: number, duration: number, id: unknown): void {
+    if (!this.matchesPlayback(id) || !Number.isFinite(currentTime) || currentTime < 0 ||
+        !Number.isFinite(duration) || duration < 0) return;
     this.currentPosition = currentTime;
     this.currentDuration = duration;
+    // Reuse the existing progress messages; no new idle timer or polling loop.
+    if (this.playing && Date.now() - this.lastSenderSync >= 30000)
+      void this.syncSender(id).catch(err => console.warn('[YTCast] State sync failed:', err));
   }
 
   /**
    * Called by frontend via WebSocket 'ended' message.
    * Notifies the library that the track finished so it can advance.
    */
-  async handleTrackEnded(): Promise<void> {
+  async handleTrackEnded(id: unknown): Promise<void> {
+    if (!this.matchesPlayback(id) || this.endedPlaybackId === id) return;
+    this.endedPlaybackId = id as string;
     this.playing = false;
     if (this.deckOrder) { await this.next(); return; }
 
@@ -128,9 +194,8 @@ export class CastPlayer extends Player {
       return;
     }
 
-    // hasNext can be wrong after queue jumps via playVideoById() — the
-    // constructed Video lacks context.index, so the library's isLast
-    // getter defaults to true. Fall back to checking videoIds directly.
+    // The library's cached neighbours can be absent after a queue jump.
+    // Fall back to the sender's explicit list of video IDs.
     const videoIds = this.queue.videoIds;
     const currentId = this.queue.current?.id;
     const currentIndex = currentId ? videoIds.indexOf(currentId) : -1;
@@ -149,8 +214,9 @@ export class CastPlayer extends Player {
    * Called by frontend via WebSocket 'playbackError' message.
    * Re-extracts the URL and sends it again.
    */
-  async handlePlaybackError(): Promise<void> {
-    if (!this.currentTrackInfo) return;
+  async handlePlaybackError(id: unknown): Promise<void> {
+    if (!this.matchesPlayback(id) || !this.currentTrackInfo || this.retryingPlaybackId === id) return;
+    this.retryingPlaybackId = id as string;
     const generation = this.playbackGeneration;
 
     try {
@@ -158,12 +224,15 @@ export class CastPlayer extends Player {
       if (generation !== this.playbackGeneration) return;
       this.currentTrackInfo = info;
       this.ws.broadcast('track', {
+        playbackId: this.playbackId,
         videoId: info.videoId,
         title: info.title,
         artist: info.artist,
         albumArt: info.albumArt,
         duration: info.duration,
         url: info.url,
+        position: this.currentPosition,
+        autoplay: this.playing,
       });
     } catch (err) {
       if (generation !== this.playbackGeneration) return;
@@ -177,6 +246,8 @@ export class CastPlayer extends Player {
       } catch {
         // Nothing more we can do
       }
+    } finally {
+      if (this.retryingPlaybackId === id) this.retryingPlaybackId = null;
     }
   }
 
@@ -188,7 +259,9 @@ export class CastPlayer extends Player {
    */
   clearOnDisconnect(): void {
     this.deckOrder = null;
+    this.playRequest++;
     this.playbackGeneration++;
+    this.playbackId = null;
     if (this.sessionCleared) return;
     this.playing = false;
     this.currentTrackInfo = null;
@@ -299,7 +372,13 @@ export class CastPlayer extends Player {
       return false;
     }
     try {
-      return await this.play({ id: videoId, client } as any, 0);
+      const index = this.queue.videoIds.indexOf(videoId);
+      if (index < 0) return false;
+      // Keep the playlist identity and destination index so the sender can
+      // select the same item. Omit per-video navigation tokens from the old song.
+      return await this.play({ id: videoId, client, context: {
+        playlistId: state.current?.context?.playlistId, index,
+      } } as Video, 0);
     } catch (err) {
       console.error(`[YTCast] Jump to ${videoId} failed:`, (err as Error).message);
       return false;
@@ -309,8 +388,16 @@ export class CastPlayer extends Player {
   // --- Player abstract method implementations ---
 
   protected async doPlay(video: Video, position: number): Promise<boolean> {
+    if (this.activePlayRequest !== this.playRequest) return false;
     if (this.deckOrder && !this.deckOrder.includes(video.id)) this.deckOrder = null;
     const generation = ++this.playbackGeneration;
+    this.playbackId = randomUUID();
+    this.endedPlaybackId = null;
+    this.lastSenderSync = 0;
+    this.currentTrackInfo = null;
+    this.currentPosition = position;
+    this.currentDuration = 0;
+    this.playing = false;
     try {
       this.markSenderActivity();
       this.sessionCleared = false;
@@ -330,6 +417,7 @@ export class CastPlayer extends Player {
       setTimeout(() => {
         if (generation !== this.playbackGeneration) return;
         this.ws.broadcast('track', {
+          playbackId: this.playbackId,
           videoId: info.videoId,
           title: info.title,
           artist: info.artist,
@@ -337,6 +425,7 @@ export class CastPlayer extends Player {
           duration: info.duration,
           url: info.url,
           autoplay: this.playing,
+          position,
         });
         console.log(`[YTCast] Loaded: ${info.title} by ${info.artist} (${info.videoId}) autoplay=${this.playing}`);
 
@@ -351,6 +440,7 @@ export class CastPlayer extends Player {
 
       return true;
     } catch (err) {
+      if (generation !== this.playbackGeneration) return false;
       console.error(`[YTCast] doPlay failed for ${video.id}:`, (err as Error).message);
       this.ws.broadcast('error', {
         message: `Failed to play: ${(err as Error).message}`,
@@ -384,6 +474,7 @@ export class CastPlayer extends Player {
 
   protected async doStop(): Promise<boolean> {
     this.playbackGeneration++;
+    this.playbackId = null;
     this.markSenderActivity();
     this.playing = false;
     this.currentTrackInfo = null;

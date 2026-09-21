@@ -8,6 +8,8 @@ function setup(ids = ['a','b','c','d']) {
   player.queue.setAsCurrent({ id:'b', client:'YTMUSIC', context:{ index:1 } } as any);
   (player as any).sessionCleared = false;
   (player as any).playing = true;
+  (player as any).playbackId = 'test-playback';
+  (player as any).currentTrackInfo = { videoId:'b' };
   (player as any).currentPosition = 42;
   for (const id of ids) (player as any).metadataCache.set(id, { title:id, artist:'Artist', albumArt:'' });
   vi.spyOn(player, 'notifyExternalStateChange').mockResolvedValue();
@@ -24,7 +26,7 @@ describe('Cast queue editing', () => {
     expect(play).not.toHaveBeenCalled();
     await player.next(); expect(play.mock.calls.at(-1)?.[0].id).toBe('d');
     await player.previous(); expect(play.mock.calls.at(-1)?.[0].id).toBe('a');
-    await player.handleTrackEnded(); expect(play.mock.calls.at(-1)?.[0].id).toBe('d');
+    await player.handleTrackEnded('test-playback'); expect(play.mock.calls.at(-1)?.[0].id).toBe('d');
   });
   it('moves the current item while preserving its identity', async () => {
     const { player } = setup();

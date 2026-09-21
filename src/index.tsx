@@ -1,6 +1,6 @@
 import { staticClasses, DialogButton, Focusable, Navigation, Tabs } from '@decky/ui';
 import { definePlugin, routerHook } from '@decky/api';
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { SiYoutubemusic } from 'react-icons/si';
 import { BsGearFill } from 'react-icons/bs';
 
@@ -12,6 +12,7 @@ import { SettingsPage } from './components/SettingsPage';
 import { themeCss } from './theme';
 import { clearLyricsCache } from './services/lyrics';
 import { SearchPage } from './components/SearchPage';
+import { LyricsPanel, LYRICS_ROUTE } from './components/LyricsPage';
 import { initAudio, destroyAudio } from './services/audioManager';
 import { initNotifications } from './services/notifications';
 
@@ -41,6 +42,11 @@ const removeThemeStyles = () => document.getElementById(THEME_STYLE_ID)?.remove(
 // own panel. The ancestor Quick Access layout is left untouched.
 const TabsContainer = memo(() => {
   const [activeTab, setActiveTab] = useState('player');
+  useEffect(() => {
+    const returnToPlayer = () => setActiveTab('player');
+    window.addEventListener('ytm-return-player', returnToPlayer);
+    return () => window.removeEventListener('ytm-return-player', returnToPlayer);
+  }, []);
   const tabItems = useMemo(() => [
     { id:'player', title:'Player', content:<PlayerView /> },
     { id:'queue', title:'Queue', content:<QueueView /> },
@@ -78,6 +84,7 @@ export default definePlugin(() => {
   initAudio();
   routerHook.addRoute(SETTINGS_ROUTE, () => <SettingsPage />);
   routerHook.addRoute(SEARCH_ROUTE, () => <SearchPage />);
+  routerHook.addRoute(LYRICS_ROUTE, () => <LyricsPanel fullScreen />);
 
   return {
     name: 'YouTube Music',
@@ -112,6 +119,7 @@ export default definePlugin(() => {
       removeThemeStyles();
       routerHook.removeRoute(SETTINGS_ROUTE);
       routerHook.removeRoute(SEARCH_ROUTE);
+      routerHook.removeRoute(LYRICS_ROUTE);
     },
   };
 });

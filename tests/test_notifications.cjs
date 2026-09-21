@@ -22,16 +22,25 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../n
 const flushSounds = () => { while (queued.length) notificationStore.PlayNotificationSound(queued.shift()); };
 const timers = new Map();
 const listen = key => fn => { listeners[key] = fn; return () => { delete listeners[key]; }; };
+class DeckyToaster {
+  toast(data) {
+    assert.equal(this, sharedToaster);
+    toasts.push(data); queued.push({ decky:true, data, eType:31 });
+    return { data, dismiss:() => { dismissed++; } };
+  }
+}
+const sharedToaster = new DeckyToaster();
+const testWindow = { NotificationStore:notificationStore, DeckyPluginLoader:{ toaster:sharedToaster } };
 const modules = {
   '@decky/api': { call:async (method, value) => { if (method.startsWith('set_')) stored = value; return { ...stored }; },
-    toaster:{ toast:data => { toasts.push(data); queued.push({ decky:true, data, eType:31 }); return { data, dismiss:() => { dismissed++; } }; } } },
+    toaster:{ toast:data => sharedToaster.toast(data) } },
   '@decky/ui':patcher,
   'react/jsx-runtime':{ jsx:(type, props) => ({ type, props }) },
   'react-icons/si':{ SiYoutubemusic:'icon' },
   './audioManager':{ addPlaybackStartedListener:listen('playing'), addSenderConnectedListener:listen('sender'), addTrackChangeListener:listen('track') },
 };
 vm.runInNewContext(ts.transpileModule(source, { compilerOptions:{ module:ts.ModuleKind.CommonJS, jsx:ts.JsxEmit.ReactJSX, target:ts.ScriptTarget.ES2022 } }).outputText, {
-  exports:exportsObject, require:name => { assert(name in modules, name); return modules[name]; }, console, window:{ NotificationStore:notificationStore },
+  exports:exportsObject, require:name => { assert(name in modules, name); return modules[name]; }, console, window:testWindow,
   setTimeout:fn => { const id = timers.size + 1; timers.set(id, fn); return id; }, clearTimeout:id => timers.delete(id),
 });
 (async () => {
@@ -73,7 +82,24 @@ vm.runInNewContext(ts.transpileModule(source, { compilerOptions:{ module:ts.Modu
   assert.equal(notificationStore.PlayNotificationSound({ decky:true, data:{ playSound:false } }), 'played');
   assert.equal(sounded.length, 6, 'Steam achievements and other plugins are untouched');
   assert(dismissed > 0, 'fast events must bound active toasts');
+  let chats = 0;
+  // Reproduce Steamcord's own-property replacement (it returns undefined).
+  const reroute = () => { chats++; };
+  sharedToaster.__steamcordSafe = 2;
+  sharedToaster.toast = reroute;
+  listeners.playing({ ...track, videoId:'with-steamcord' });
+  assert.equal(chats, 0);
+  assert.equal(toasts.at(-1).logo.props.src, track.albumArt);
+  flushSounds(); assert.equal(sounded.length, 6, 'silent native toast stays silent with Steamcord');
+  assert.equal(sharedToaster.toast, reroute, 'other plugins retain their existing routing');
+  sharedToaster.toast({ title:'Other plugin' }); assert.equal(chats, 1);
   stop(); assert.equal(Object.keys(listeners).length, 0); assert.equal(timers.size, 0);
   assert.equal(notificationStore.PlayNotificationSound, originalSound, 'unload restores native sound playback');
+  const stopAgain = exportsObject.initNotifications();
+  await exportsObject.loadNotificationSettings();
+  listeners.sender('Steamcord loaded first');
+  assert.equal(toasts.at(-1).body, 'Steamcord loaded first has connected');
+  assert.equal(chats, 1, 'works regardless of plugin load order');
+  stopAgain();
   console.log('PASS notifications: silent defaults, independent toggles/sounds, metadata, deduplication, bounded toasts and cleanup');
 })().catch(error => { console.error(error); process.exitCode = 1; });

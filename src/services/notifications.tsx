@@ -28,6 +28,21 @@ export async function saveNotificationSettings(value: NotificationSettings) {
   return { ...settings };
 }
 
+function nativeToast(data: Parameters<typeof toaster.toast>[0]) {
+  const shared = (window as unknown as {
+    DeckyPluginLoader?: { toaster?: typeof toaster & { __steamcordSafe?: number | boolean } };
+  }).DeckyPluginLoader?.toaster;
+  // Steamcord replaces the shared instance method for every Decky plugin.
+  // Call Decky's prototype implementation only for our notifications; never
+  // replace the shared method or change Steamcord's notification preferences.
+  if (shared?.__steamcordSafe) {
+    const original = Object.getPrototypeOf(shared)?.toast;
+    if (typeof original !== 'function') throw new Error('Native Decky notifications unavailable');
+    return original.call(shared, data) as ReturnType<typeof toaster.toast>;
+  }
+  return toaster.toast(data);
+}
+
 // Mounted once for the plugin lifetime, independent of the Quick Access panel.
 // Only actual sender events and successful playback emit notifications.
 export function initNotifications() {
@@ -56,7 +71,8 @@ export function initNotifications() {
       // Keep fast skips from filling the Steam notification queue.
       if (active.size >= 2) { const oldest = active.values().next().value; oldest?.dismiss(); if (oldest) active.delete(oldest); }
       const payload = { ...data, ytmNotification:true, duration:5000, showToast:true, showNewIndicator:false };
-      const item = toaster.toast(payload);
+      const item = nativeToast(payload);
+      if (!item || typeof item.dismiss !== 'function') return;
       active.add(item);
       const timer = setTimeout(() => { active.delete(item); timers.delete(timer); }, 6000);
       timers.add(timer);

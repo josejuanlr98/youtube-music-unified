@@ -18,7 +18,7 @@ export interface WsMessage {
   data: unknown;
 }
 
-type IncomingEventType = 'progress' | 'ended' | 'playbackError';
+type IncomingEventType = 'progress' | 'ended' | 'playbackError' | 'playing';
 
 export interface IncomingMessage {
   event: IncomingEventType;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { extractAudioInfo, type AudioInfo } from '../src/ytdlp.js';
+import { extractAudioInfo } from '../src/ytdlp.js';
 import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
 

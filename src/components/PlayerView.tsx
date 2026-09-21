@@ -8,7 +8,7 @@ import { AiOutlineLike, AiFillLike, AiOutlineDislike, AiFillDislike } from 'reac
 import { usePlayer } from '../context/PlayerContext';
 import { togglePlayback, playNext, playPrevious, stopAllPlayback, seekPlayback } from '../services/audioManager';
 import { VolumeSlider, PaddedSlider } from './VolumeSlider';
-import { LyricsPanel } from './LyricsPage';
+import { LyricsPanel, LYRICS_ROUTE } from './LyricsPage';
 
 const button: React.CSSProperties = { flex:'1 1 0', width:0, minWidth:0, minHeight:28, maxHeight:34, height:30, boxSizing:'border-box', lineHeight:'normal', fontSize:12, padding:'0 8px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, margin:0 };
 const formatTime = (value: number) => { const total = Math.max(0, Math.floor(value || 0)); return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`; };
@@ -19,6 +19,11 @@ export const PlayerView = () => {
   const [stopping, setStopping] = useState(false);
   const [error, setError] = useState('');
   const [showLyrics, setShowLyrics] = useState(false);
+  useEffect(() => {
+    const returnToPlayer = () => setShowLyrics(false);
+    window.addEventListener('ytm-return-player', returnToPlayer);
+    return () => window.removeEventListener('ytm-return-player', returnToPlayer);
+  }, []);
   useEffect(() => { if (!authenticated) setShowLyrics(false); }, [authenticated]);
   useEffect(() => {
     let alive = true;
@@ -49,7 +54,9 @@ export const PlayerView = () => {
   if (showLyrics && authenticated) return <LyricsPanel onBack={() => setShowLyrics(false)} />;
 
   return (
-    <div className="ytm-ui ytm-player-view" style={{ width:'100%', maxWidth:'100%', minWidth:0, minHeight:0, boxSizing:'border-box', padding:'2px 2px 6px', display:'flex', flexDirection:'column', gap:6 }}>
+    <Focusable onSecondaryActionDescription={track && authenticated ? 'Fullscreen lyrics' : undefined}
+      onSecondaryButton={track && authenticated ? event => { event.preventDefault(); event.stopPropagation(); Navigation.CloseSideMenus(); Navigation.Navigate(LYRICS_ROUTE); } : undefined}
+      className="ytm-ui ytm-player-view" style={{ width:'100%', maxWidth:'100%', minWidth:0, minHeight:0, boxSizing:'border-box', padding:'2px 2px 6px', display:'flex', flexDirection:'column', gap:6 }}>
       <div className="ytm-card" style={{ padding:'10px 10px 12px', flexShrink:0, minWidth:0 }}>
         <div className="ytm-eyebrow" style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', gap:2, marginBottom:12, width:'100%' }}>
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
@@ -102,6 +109,6 @@ export const PlayerView = () => {
       {castConnected && <div className="ytm-muted" style={{ fontSize:10, textAlign:'center' }}>Shuffle / repeat: use your device.</div>}
       <DialogButton className="ytm-button" style={{ ...button, flex:'none', width:'100%', fontSize:12 }} disabled={stopping} onClick={() => void stop()}><FaStop size={11} /> {stopping ? 'Stopping & unlinking…' : 'Stop, Clear & Unlink'}</DialogButton>
       {error && <div className="ytm-error" role="alert">{error}</div>}
-    </div>
+    </Focusable>
   );
 };

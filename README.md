@@ -2,7 +2,7 @@
 
 A Steam Deck plugin that plays YouTube Music from Quick Access and turns the Deck into a YouTube Cast receiver. It combines local playback, queue, library, lyrics, controller-friendly controls, notifications, and Cast discovery on trusted networks.
 
-The current stable version is **0.6.3**. Most users should install the ZIP attached to a Release.
+The current stable version is **0.6.4**. Most users should install the ZIP attached to a Release.
 
 ## Features
 
@@ -11,7 +11,7 @@ The current stable version is **0.6.3**. Most users should install the ZIP attac
 - Local playback and YouTube / YouTube Music Cast session receiving.
 - Cast discovery restricted to networks marked as trusted.
 - Configurable Cast receiver name.
-- Lyrics navigation with the D-pad and L1/R1 page controls.
+- Fullscreen lyrics with larger artwork. Press **X** from Player or the compact lyrics reader to open fullscreen, **B** to return, and D-pad or **L1/R1** to scroll manually. Automatic karaoke scrolling is not included.
 - Gamepad-controlled progress and volume sliders.
 - Like/dislike, shuffle, repeat, and playlist library.
 - Native Decky notifications for device connections and song changes. Each notification and sound is configurable separately; sounds are disabled by default.
@@ -31,7 +31,7 @@ The current stable version is **0.6.3**. Most users should install the ZIP attac
 
 ## Quick installation
 
-1. Download `youtube-music-unified-0.6.3.zip` from **Releases**.
+1. Download `youtube-music-unified-0.6.4.zip` from **Releases**.
 2. In Gaming Mode, open Decky → Developer Options → **Install from ZIP**.
 3. Select the ZIP and restart Decky if the previous version is still shown.
 4. For Cast, enable your trusted network in **Settings → Cast Receiver**. To use the built-in library, also sign in through **Settings → Account**.
@@ -91,6 +91,12 @@ During Cast, the sender's queue is the initial source. From Queue, you can move 
 
 Settings → Notifications provides independent switches for **Device connected**, **Connection sound**, **Now playing**, and **Song change sound**. Notifications use Decky's native Steam UI, include the device name or album art/title/artist, and work with Quick Access closed. They do not add a polling process or duplicate pause/resume alerts.
 
+With Steamcord installed, native notifications may remain hidden. The plugin avoids rerouting them into chat-style messages.
+
+## Fullscreen lyrics
+
+Press **X** to open fullscreen or use the expand icon beside Back in the compact reader. **B** returns to Player. Lyrics scroll manually; there is no automatic karaoke synchronization. The fullscreen view requests temporary wake protection, released when leaving the view. Availability depends on Steam/CEF; forced shutdown and battery exhaustion are not prevented.
+
 ## Build on Windows
 
 Requirements: Node.js, pnpm, Python, and PowerShell.
@@ -134,9 +140,12 @@ YouTube Music/
 - `py_modules/`: vendored Python dependencies.
 - `bin/`: Linux binaries included in the package.
 
-## Origin and credits
+## Maintainer and acknowledgments
 
-This project combines and adapts ideas and code from:
+**YouTube Music Unified is developed and maintained by [josejuanlr98](https://github.com/josejuanlr98).** This project brings together playback and Cast with its own integrated interface, queue tools, fullscreen lyrics, controller navigation, notifications, and subsequent fixes.
+
+The original foundations include code and ideas from these two projects by **artistro08**. Credit here refers to those upstream projects, not authorship of the Unified changes:
+
 
 - [decky-youtube-music-player](https://github.com/artistro08/decky-youtube-music-player): player, authentication, library, and controls.
 - [youtube-cast-receiver](https://github.com/artistro08/youtube-cast-receiver): Cast receiver, especially [release v0.4.1](https://github.com/artistro08/youtube-cast-receiver/releases/tag/v0.4.1).
@@ -144,7 +153,7 @@ This project combines and adapts ideas and code from:
 - [ytmusicapi](https://github.com/sigma67/ytmusicapi): unofficial YouTube Music client.
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp): stream extractor.
 
-Project development and integration were completed with assistance from **Codex by ChatGPT**. **Google Gemini** was used as a secondary consultation resource.
+Development assistance: **ChatGPT / Codex (OpenAI)**. **Google Gemini** was used as a secondary consultation resource.
 
 This repository's implementation is released under BSD-3-Clause. Dependencies retain their own licenses. GitHub Actions runs typechecking, builds, and Python/Node tests on every push and pull request.
 

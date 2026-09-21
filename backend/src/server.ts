@@ -202,16 +202,20 @@ async function main() {
   wsManager.onMessage((msg) => {
     switch (msg.event) {
       case 'progress': {
-        const data = msg.data as { currentTime: number; duration: number };
-        castPlayer.updateProgress(data.currentTime, data.duration);
+        const data = msg.data as { currentTime: number; duration: number; playbackId?: string };
+        castPlayer.updateProgress(data?.currentTime, data?.duration, data?.playbackId);
         break;
       }
       case 'ended': {
-        void castPlayer.handleTrackEnded();
+        void castPlayer.handleTrackEnded((msg.data as any)?.playbackId).catch(err => console.warn('[YTCast] Advance failed:', err));
         break;
       }
       case 'playbackError': {
-        void castPlayer.handlePlaybackError();
+        void castPlayer.handlePlaybackError((msg.data as any)?.playbackId).catch(err => console.warn('[YTCast] Retry failed:', err));
+        break;
+      }
+      case 'playing': {
+        void castPlayer.syncSender((msg.data as any)?.playbackId).catch(err => console.warn('[YTCast] State sync failed:', err));
         break;
       }
     }
