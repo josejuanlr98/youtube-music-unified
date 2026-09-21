@@ -89,17 +89,20 @@ async function cacheTests() {
 
 function lyricsTests() {
   let scroll = { scrollTop:0, clientHeight:500, scrollBy(options) { assert.equal(options.behavior, 'smooth'); this.scrollTop += options.top; } };
-  let back = 0;
+  let back = 0, refs = 0;
   const jsx = (type, props) => ({ type, props });
   const elements = load('src/components/LyricsPage.tsx', {
     'react/jsx-runtime': { jsx, jsxs:jsx },
-    'react': { useState: value => [typeof value === 'function' ? value() : value, () => {}], useEffect() {}, useRef:() => ({ current:scroll }) },
+    'react': { useState: value => [typeof value === 'function' ? value() : value, () => {}], useEffect() {}, useRef:() => ({ current:refs++ === 0 ? scroll : null }) },
     '@decky/ui': { DialogButton:'button', Focusable:'div', GamepadButton:{ DIR_UP:9, DIR_DOWN:10, BUMPER_LEFT:5, BUMPER_RIGHT:6 }, Navigation:{ NavigateBack() { back++; }, OpenQuickAccessMenu() {} }, QuickAccessTab:{ Decky:1 } },
     'react-icons/fa': { FaArrowLeft:'i', FaChevronUp:'i', FaChevronDown:'i', FaMusic:'i', FaExpand:'i' },
-    '../services/audioManager': { getCurrentTrack:() => ({ videoId:'test', title:'Test', artist:'Artist' }), addTrackChangeListener:() => () => {}, addProgressListener:() => () => {}, getProgress:() => ({ position:0 }) },
+    '../services/audioManager': { getIsCastConnected:()=>false, getCastSenderName:()=>null, addCastConnectionListener:()=>()=>{}, getCurrentTrack:() => ({ videoId:'test', title:'Test', artist:'Artist' }), addTrackChangeListener:() => () => {}, addProgressListener:() => () => {}, getProgress:() => ({ position:0 }) },
     '../theme': { themeCss: '' },
     '../services/lyrics': { loadLyrics:async () => ({ lyrics:'Test' }) },
     '../services/focus': { focusLyricsReader:() => () => {} },
+    'react-icons/md':{}, 'react-icons/si': { SiYoutubemusic:'icon' },
+    '../services/lyricsScroll': {},
+    '../services/notifications': {},
   });
   const root = elements.LyricsPanel({ onBack: () => { back++; } });
   const event = button => ({ detail:{ button }, preventDefault() {}, stopPropagation() {} });

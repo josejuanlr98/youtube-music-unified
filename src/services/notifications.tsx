@@ -14,6 +14,14 @@ const notificationLogo = () => <div style={{ width:48, height:48, display:'flex'
 </div>;
 let settings: NotificationSettings = { connections:true, tracks:true, connectionSound:false, trackSound:false };
 let ready = false;
+let fullscreenReaders = 0;
+let dismissVisible: (() => void) | undefined;
+export function suppressFullscreenNotifications() {
+  fullscreenReaders++;
+  dismissVisible?.();
+  let released = false;
+  return () => { if (!released) { released = true; fullscreenReaders--; } };
+}
 let loading: Promise<NotificationSettings> | null = null;
 export function loadNotificationSettings(): Promise<NotificationSettings> {
   if (!loading) loading = call<[], NotificationSettings>('get_notification_settings').then(value => {
@@ -58,14 +66,15 @@ export function initNotifications() {
     // explicitly silent toasts at the final playback method, including delayed ones.
     soundPatch = replacePatch(store, 'PlayNotificationSound', (args: any[]) => {
       const notification = args[0];
-      if (notification?.decky && notification.data?.ytmNotification === true && notification.data.playSound === false) return;
+      if (notification?.decky && notification.data?.ytmNotification === true && (fullscreenReaders > 0 || notification.data.playSound === false)) return;
       return callOriginal;
     });
   };
   const active = new Set<ReturnType<typeof toaster.toast>>();
   const timers = new Set<ReturnType<typeof setTimeout>>();
+  dismissVisible = () => { active.forEach(item => item.dismiss()); active.clear(); };
   const toast = (data: Parameters<typeof toaster.toast>[0]) => {
-    if (!alive || !ready) return;
+    if (!alive || !ready || fullscreenReaders > 0) return;
     try {
       ensureSoundPatch();
       // Keep fast skips from filling the Steam notification queue.
@@ -93,5 +102,5 @@ export function initNotifications() {
     }),
   ];
   void loadNotificationSettings().catch(error => console.warn('[YTM] Could not load notification preferences', error));
-  return () => { alive = false; ready = false; removers.forEach(remove => remove()); timers.forEach(clearTimeout); active.forEach(item => item.dismiss()); soundPatch?.unpatch(); };
+  return () => { alive = false; ready = false; dismissVisible = undefined; removers.forEach(remove => remove()); timers.forEach(clearTimeout); active.forEach(item => item.dismiss()); soundPatch?.unpatch(); };
 }

@@ -81,6 +81,36 @@ class PlaybackTests(unittest.IsolatedAsyncioTestCase):
 
 
 class QueueEditingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_search_play_next_preserves_current_and_overrides_shuffle_repeat(self):
+        p = module.Plugin()
+        p.ytmusic = Mock()
+        p._get_streaming_url = Mock(return_value='https://audio.test/stream')
+        p.queue = [{'videoId': x} for x in ['a', 'b', 'c']]
+        p.queue_position = 1
+        p.shuffle = True
+        p.shuffle_order = [1, 0, 2]
+        p.repeat = 'ONE'
+        p.is_playing = True
+        result = await p.queue_song_next({'videoId': 'new', 'duration': '3:21'})
+        self.assertTrue(result['success'])
+        self.assertEqual(p.queue[p.queue_position]['videoId'], 'b')
+        self.assertTrue(p.is_playing)
+        self.assertEqual(sorted(p.shuffle_order), [0, 1, 2, 3])
+        self.assertEqual(p.queue[2]['duration'], 201)
+        p._advance_queue()
+        self.assertEqual(p.queue[p.queue_position]['videoId'], 'new')
+
+    async def test_search_play_next_handles_empty_queue(self):
+        p = module.Plugin()
+        p.ytmusic = Mock()
+        p.queue = []
+        p.queue_position = 8
+        p.shuffle = True
+        p.shuffle_order = [8]
+        self.assertTrue((await p.queue_song_next({'videoId': 'new'}))['success'])
+        self.assertEqual(p.queue_position, 0)
+        self.assertEqual(p.shuffle_order, [0])
+
     async def test_moves_preserve_current_song_in_every_direction(self):
         for current in range(4):
             for index in range(4):

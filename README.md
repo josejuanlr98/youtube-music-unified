@@ -2,16 +2,16 @@
 
 A Steam Deck plugin that plays YouTube Music from Quick Access and turns the Deck into a YouTube Cast receiver. It combines local playback, queue, library, lyrics, controller-friendly controls, notifications, and Cast discovery on trusted networks.
 
-The current stable version is **0.6.4**. Most users should install the ZIP attached to a Release.
+The current stable version is **0.6.5**. Most users should install the ZIP attached to a Release.
 
 ## Features
 
 - Play YouTube Music songs and playlists, with direct videoId search playback.
-- Queue controls: previous, next, remove, reorder, and Play next.
+- Queue controls: previous, next, remove, reorder, and Play next. Search results also include a Play next action.
 - Local playback and YouTube / YouTube Music Cast session receiving.
 - Cast discovery restricted to networks marked as trusted.
 - Configurable Cast receiver name.
-- Fullscreen lyrics with larger artwork. Press **X** from Player or the compact lyrics reader to open fullscreen, **B** to return, and D-pad or **L1/R1** to scroll manually. Automatic karaoke scrolling is not included.
+- Fullscreen lyrics with larger artwork. Press **X** from Player or the compact lyrics reader to open fullscreen, **B** to return, and D-pad or **L1/R1** to scroll manually. Fullscreen includes gentle automatic reading scroll, not karaoke synchronization.
 - Gamepad-controlled progress and volume sliders.
 - Like/dislike, shuffle, repeat, and playlist library.
 - Native Decky notifications for device connections and song changes. Each notification and sound is configurable separately; sounds are disabled by default.
@@ -31,7 +31,7 @@ The current stable version is **0.6.4**. Most users should install the ZIP attac
 
 ## Quick installation
 
-1. Download `youtube-music-unified-0.6.4.zip` from **Releases**.
+1. Download `youtube-music-unified-0.6.5.zip` from **Releases**.
 2. In Gaming Mode, open Decky → Developer Options → **Install from ZIP**.
 3. Select the ZIP and restart Decky if the previous version is still shown.
 4. For Cast, enable your trusted network in **Settings → Cast Receiver**. To use the built-in library, also sign in through **Settings → Account**.
@@ -95,7 +95,7 @@ With Steamcord installed, native notifications may remain hidden. The plugin avo
 
 ## Fullscreen lyrics
 
-Press **X** to open fullscreen or use the expand icon beside Back in the compact reader. **B** returns to Player. Lyrics scroll manually; there is no automatic karaoke synchronization. The fullscreen view requests temporary wake protection, released when leaving the view. Availability depends on Steam/CEF; forced shutdown and battery exhaustion are not prevented.
+Press **X** to open fullscreen or use the expand icon beside Back in the compact reader. **B** returns to Player. Lyrics slowly scroll automatically, wait five seconds at the bottom, then restart. Manual scrolling pauses the automatic movement for ten seconds. This is a reading aid, not karaoke synchronization. Plugin notifications are suppressed while fullscreen is open. The fullscreen view requests temporary wake protection, released when leaving the view. Availability depends on Steam/CEF; forced shutdown and battery exhaustion are not prevented.
 
 ## Build on Windows
 

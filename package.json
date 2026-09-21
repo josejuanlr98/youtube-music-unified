@@ -1,12 +1,12 @@
 {
   "name": "decky-youtube-music-cast",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "YouTube Music player and YouTube Cast receiver for Steam Deck.",
   "type": "module",
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "test": "node tests/test_cast_lifecycle.cjs && node tests/test_054.cjs && node tests/test_notifications.cjs && node tests/test_cast_only.cjs && node tests/test_cast_transport.cjs && node tests/test_fullscreen.cjs",
+    "test": "node tests/test_cast_lifecycle.cjs && node tests/test_054.cjs && node tests/test_notifications.cjs && node tests/test_cast_only.cjs && node tests/test_cast_transport.cjs && node tests/test_fullscreen.cjs && node tests/test_lyrics_scroll.cjs",
     "test:python": "python -m unittest discover -s tests -v",
     "build:backend": "esbuild backend/src/server.ts --bundle --platform=node --format=cjs --outfile=backend/out/server.cjs --external:bufferutil --external:utf-8-validate",
     "package": "powershell -ExecutionPolicy Bypass -File build.ps1"

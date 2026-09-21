@@ -16,6 +16,24 @@ function setup(ids = ['a','b','c','d']) {
   return { player, ws };
 }
 describe('Cast queue editing', () => {
+  it('adds a search result next without interrupting the current song', async () => {
+    const { player } = setup();
+    const play = vi.spyOn(player, 'play').mockResolvedValue(true);
+    expect((await player.queueNext({ videoId:'new', title:'New song' })).ok).toBe(true);
+    expect(player.getQueueWithMetadata().tracks.map(t => t.videoId)).toEqual(['a','b','new','c','d']);
+    expect(await player.getPosition()).toBe(42);
+    expect(player.isCurrentlyPlaying()).toBe(true);
+    expect(play).not.toHaveBeenCalled();
+    await player.next();
+    expect(play.mock.calls.at(-1)?.[0].id).toBe('new');
+  });
+  it('moves existing search songs and rejects disconnected additions', async () => {
+    const { player } = setup();
+    expect((await player.queueNext({ videoId:'d' })).ok).toBe(true);
+    expect(player.getQueueWithMetadata().tracks.map(t => t.videoId)).toEqual(['a','b','d','c']);
+    player.clearOnDisconnect();
+    expect((await player.queueNext({ videoId:'new' })).ok).toBe(false);
+  });
   it('moves without interrupting playback and uses that order for next/previous/end', async () => {
     const { player } = setup();
     const play = vi.spyOn(player, 'play').mockResolvedValue(true);

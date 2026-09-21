@@ -100,6 +100,14 @@ vm.runInNewContext(ts.transpileModule(source, { compilerOptions:{ module:ts.Modu
   listeners.sender('Steamcord loaded first');
   assert.equal(toasts.at(-1).body, 'Steamcord loaded first has connected');
   assert.equal(chats, 1, 'works regardless of plugin load order');
+  const beforeFullscreen = toasts.length;
+  const resumeNotifications = exportsObject.suppressFullscreenNotifications();
+  listeners.sender('Hidden in fullscreen');
+  listeners.playing({ ...track, videoId:'fullscreen-song' });
+  assert.equal(toasts.length, beforeFullscreen, 'fullscreen drops new alerts');
+  resumeNotifications(); resumeNotifications();
+  listeners.sender('Visible after exit');
+  assert.equal(toasts.length, beforeFullscreen + 1, 'exit restores saved notification preferences');
   stopAgain();
   console.log('PASS notifications: silent defaults, independent toggles/sounds, metadata, deduplication, bounded toasts and cleanup');
 })().catch(error => { console.error(error); process.exitCode = 1; });

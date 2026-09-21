@@ -108,6 +108,10 @@ const routes: Record<string, Record<string, RouteHandler>> = {
       if (!ctx.isConnected()) return { ok:false, message:'Cast session ended. Please refresh the queue.' };
       return ctx.castPlayer.editQueue(body?.index, body?.action, body?.expectedIds);
     },
+    '/api/queue/next': async (body, ctx) => {
+      if (!ctx.isConnected()) return { ok:false, message:'Cast session ended. Please try again.' };
+      return ctx.castPlayer.queueNext(body);
+    },
 
     '/api/stop': async (_body, ctx) => { await ctx.castPlayer.stop(); ctx.castPlayer.clearOnDisconnect(); return { ok: true }; },
 

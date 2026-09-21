@@ -9,8 +9,8 @@ const modules = {
  'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},
  'react':{useState:v=>[typeof v==='function'?v():v,()=>{}],useRef:()=>({current:null}),useEffect:fn=>effects.push(fn)},
  '@decky/ui':{Focusable:'div',DialogButton:'button',Navigation:{NavigateBack(){backs++},OpenQuickAccessMenu(){reopened++}},GamepadButton:{},QuickAccessTab:{Decky:1}},
- 'react-icons/fa':{},
- '../services/audioManager':{getCurrentTrack:()=>null,getProgress:()=>({position:45}),addProgressListener(){},addTrackChangeListener(){}},
+ 'react-icons/fa':{}, 'react-icons/md':{}, 'react-icons/si':{}, '../services/lyricsScroll':{}, '../services/notifications':{},
+ '../services/audioManager':{getIsCastConnected:()=>false, getCastSenderName:()=>null, addCastConnectionListener:()=>()=>{}, getCurrentTrack:()=>null,getProgress:()=>({position:45}),addProgressListener(){},addTrackChangeListener(){}},
  '../services/lyrics':{},'../services/focus':{}
 };
 const result = {};

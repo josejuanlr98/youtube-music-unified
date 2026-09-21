@@ -711,6 +711,35 @@ class Plugin:
             decky.logger.error(f"Search failed: {e}")
             return {"error": str(e)}
 
+    async def queue_song_next(self, metadata):
+        if not self.ytmusic:
+            return {"error": "Not authenticated"}
+        if not isinstance(metadata, dict) or not metadata.get('videoId'):
+            return {"error": "No song selected"}
+        duration = 0
+        try:
+            for part in str(metadata.get('duration') or '0').split(':'):
+                duration = duration * 60 + int(part)
+        except ValueError:
+            duration = 0
+        track = {key: str(metadata.get(key) or '') for key in ('videoId', 'title', 'artist', 'albumArt')}
+        track.update(album='', duration=duration, likeStatus='INDIFFERENT')
+        if not self.queue:
+            self.queue_position = 0
+            self.shuffle_order = []
+        index = self.queue_position + 1 if self.queue else 0
+        self.queue.insert(index, track)
+        if self.shuffle:
+            order = [i + 1 if i >= index else i for i in self.shuffle_order]
+            if not order:
+                order = [i for i in range(len(self.queue)) if i != index]
+            slot = order.index(self.queue_position) + 1 if self.queue_position in order else 0
+            order.insert(slot, index)
+            self.shuffle_order = order
+        if self.repeat == 'ONE':
+            self.repeat = 'NONE'
+        return {"success": True}
+
     async def play_song(self, video_id, metadata=None):
         """Play the selected video directly; radio is a separate operation."""
         if not self.ytmusic:

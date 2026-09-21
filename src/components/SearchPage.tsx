@@ -2,7 +2,8 @@ import { ButtonItem, DialogButton, TextField, Focusable, Navigation, QuickAccess
 import { call } from '@decky/api';
 import { useEffect, useRef, useState } from 'react';
 import { FaMusic } from 'react-icons/fa';
-import { playTrack, type TrackInfo } from '../services/audioManager';
+import { MdPlaylistPlay } from 'react-icons/md';
+import { playTrack, getIsCastConnected, type TrackInfo } from '../services/audioManager';
 
 interface SearchResult {
   videoId: string;
@@ -27,6 +28,8 @@ export const SearchPage = () => {
   const [searching, setSearching] = useState(false);
   const [loadingSong, setLoadingSong] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [queued, setQueued] = useState<string | null>(null);
+  const busy = useRef(false);
   const [hasSearched, setHasSearched] = useState(false);
 
   const handleSearch = async () => {
@@ -49,6 +52,7 @@ export const SearchPage = () => {
   };
 
   const handleSongTap = async (song: SearchResult) => {
+    if (busy.current) return;
     const videoId = song.videoId;
     setLoadingSong(videoId);
     setError('');
@@ -66,6 +70,25 @@ export const SearchPage = () => {
       setError(String(e));
     }
     setLoadingSong(null);
+  };
+
+  const queueNext = async (song: SearchResult) => {
+    if (busy.current || loadingSong) return;
+    busy.current = true; setLoadingSong(song.videoId); setError(''); setQueued(null);
+    try {
+      if (getIsCastConnected()) {
+        const response = await fetch('http://127.0.0.1:39281/api/queue/next', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(song)
+        });
+        const value = await response.json();
+        if (!response.ok || !value.ok) throw new Error(value.message || 'Could not queue song.');
+      } else {
+        const value = await call<[SearchResult], {success?:boolean;error?:string}>('queue_song_next', song);
+        if (!value.success) throw new Error(value.error || 'Could not queue song.');
+      }
+      setQueued(song.videoId);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not queue song.'); }
+    finally { busy.current = false; setLoadingSong(null); }
   };
 
   return (
@@ -102,7 +125,7 @@ export const SearchPage = () => {
           const isLoading = loadingSong === song.videoId;
           return (
             <Focusable
-              key={song.videoId}
+              flow-children="horizontal" key={song.videoId}
               style={{ display: 'flex', alignItems: 'stretch', marginTop: '2px', marginBottom: '2px' }}
             >
               <DialogButton className="ytm-button ytm-list-row"
@@ -119,6 +142,7 @@ export const SearchPage = () => {
                   overflow: 'hidden',
                   opacity: isLoading ? 0.6 : 1,
                 }}
+                disabled={loadingSong !== null}
                 onClick={() => { if (!isLoading) void handleSongTap(song); }}
               >
                 {/* Thumbnail */}
@@ -146,6 +170,9 @@ export const SearchPage = () => {
                   )}
                 </div>
               </DialogButton>
+              <DialogButton className="ytm-button" disabled={loadingSong !== null} onOKActionDescription="Play next" aria-label={queued === song.videoId ? 'Queued next' : 'Play next'}
+                style={{ width:36, minWidth:0, height:60, minHeight:60, maxHeight:60, flexShrink:0, margin:0, padding:0, display:'flex', alignItems:'center', justifyContent:'center', color:queued === song.videoId ? '#1a9fff' : undefined }}
+                onClick={() => void queueNext(song)}><MdPlaylistPlay size={19} /></DialogButton>
             </Focusable>
           );
         })}

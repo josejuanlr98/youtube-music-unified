@@ -35,6 +35,23 @@ export class CastPlayer extends Player {
   /** An incoming sender playlist takes priority over a Deck-side arrangement. */
   clearDeckOrder(): void { this.deckOrder = null; }
 
+  async queueNext(metadata: { videoId?: string; title?: string; artist?: string; albumArt?: string }) {
+    const ids = this.deckOrder ?? this.queue.videoIds;
+    const current = this.queue.current;
+    const id = metadata?.videoId;
+    if (this.sessionCleared || !current || typeof id !== 'string' || !/^[\w-]{1,64}$/.test(id))
+      return { ok:false, message:'No active Cast session or invalid song.' };
+    if (ids.includes(id)) return this.editQueue(ids.indexOf(id), 'next', [...ids]);
+    const index = ids.indexOf(current.id);
+    if (index < 0) return { ok:false, message:'Queue changed. Please try again.' };
+    this.deckOrder = [...ids];
+    this.deckOrder.splice(index + 1, 0, id);
+    this.metadataCache.set(id, { videoId:id, title:String(metadata.title || id), artist:String(metadata.artist || ''), albumArt:String(metadata.albumArt || ''), duration:0, url:'' });
+    this.ws.broadcast('queue', this.getQueueWithMetadata());
+    await this.notifyExternalStateChange();
+    return { ok:true };
+  }
+
   async editQueue(index: number, action: string, expectedIds: string[]) {
     const ids = this.deckOrder ?? this.queue.videoIds;
     const current = this.queue.current;
