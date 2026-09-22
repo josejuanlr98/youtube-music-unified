@@ -882,33 +882,14 @@ class Plugin:
                 return {"error": "Session expired. Please re-authenticate with fresh browser headers in Settings."}
             return {"error": msg}
 
-    async def get_lyrics(self, video_id):
-        if not self.ytmusic:
-            return {"error": "Not authenticated"}
-        if not video_id:
+    async def get_lyrics(self, video_id, metadata=None):
+        if not isinstance(video_id, str) or not video_id.strip():
             return {"error": "No song selected"}
-        try:
-            watch = self.ytmusic.get_watch_playlist(videoId=video_id, radio=False)
-            lyrics_info = watch.get("lyrics") if isinstance(watch, dict) else None
-            browse_id = lyrics_info if isinstance(lyrics_info, str) else (
-                lyrics_info.get("browseId") if isinstance(lyrics_info, dict) else None
-            )
-            if not browse_id:
-                return {"lyrics": None, "source": None, "hasTimestamps": False}
-            lyrics = self.ytmusic.get_lyrics(browse_id, timestamps=False)
-            if not lyrics:
-                return {"lyrics": None, "source": None}
-            return {
-                "lyrics": lyrics.get("lyrics") if isinstance(lyrics, dict) else str(lyrics),
-                "source": lyrics.get("source") if isinstance(lyrics, dict) else None,
-            }
-        except Exception as e:
-            decky.logger.error(f"Failed to get lyrics for {video_id}: {e}")
-            if "sign in" in str(e).lower():
-                return {"error": "Session expired. Please re-authenticate."}
-            if isinstance(e, (KeyError, IndexError, TypeError)):
-                return {"lyrics": None, "source": None, "hasTimestamps": False}
-            return {"error": "Could not load lyrics. Please try again."}
+        from ytm_lyrics import LyricsResolver
+        if not hasattr(self, '_lyrics_resolver'):
+            self._lyrics_resolver = LyricsResolver()
+        # Network calls run off Decky's event loop, on an isolated anonymous client.
+        return await asyncio.to_thread(self._lyrics_resolver.resolve, video_id, metadata)
 
     async def stop_all(self):
         self.queue = []

@@ -2,7 +2,7 @@
 
 A Steam Deck plugin that plays YouTube Music from Quick Access and turns the Deck into a YouTube Cast receiver. It combines local playback, queue, library, lyrics, controller-friendly controls, notifications, and Cast discovery on trusted networks.
 
-The current stable version is **0.6.5**. Most users should install the ZIP attached to a Release.
+The current stable version is **0.6.6**. Most users should install the ZIP attached to a Release.
 
 ## Features
 
@@ -11,7 +11,7 @@ The current stable version is **0.6.5**. Most users should install the ZIP attac
 - Local playback and YouTube / YouTube Music Cast session receiving.
 - Cast discovery restricted to networks marked as trusted.
 - Configurable Cast receiver name.
-- Fullscreen lyrics with larger artwork. Press **X** from Player or the compact lyrics reader to open fullscreen, **B** to return, and D-pad or **L1/R1** to scroll manually. Fullscreen includes gentle automatic reading scroll, not karaoke synchronization.
+- Fullscreen lyrics with larger artwork. Press **X** from Player or the compact lyrics reader to open fullscreen, **B** to return, and D-pad or **L1/R1** to scroll manually. Real line-synchronized lyrics highlight and follow the song when timestamps are available; otherwise fullscreen uses gentle automatic reading scroll.
 - Gamepad-controlled progress and volume sliders.
 - Like/dislike, shuffle, repeat, and playlist library.
 - Native Decky notifications for device connections and song changes. Each notification and sound is configurable separately; sounds are disabled by default.
@@ -31,7 +31,7 @@ The current stable version is **0.6.5**. Most users should install the ZIP attac
 
 ## Quick installation
 
-1. Download `youtube-music-unified-0.6.5.zip` from **Releases**.
+1. Download `youtube-music-unified-0.6.6.zip` from **Releases**.
 2. In Gaming Mode, open Decky → Developer Options → **Install from ZIP**.
 3. Select the ZIP and restart Decky if the previous version is still shown.
 4. For Cast, enable your trusted network in **Settings → Cast Receiver**. To use the built-in library, also sign in through **Settings → Account**.
@@ -95,7 +95,9 @@ With Steamcord installed, native notifications may remain hidden. The plugin avo
 
 ## Fullscreen lyrics
 
-Press **X** to open fullscreen or use the expand icon beside Back in the compact reader. **B** returns to Player. Lyrics slowly scroll automatically, wait five seconds at the bottom, then restart. Manual scrolling pauses the automatic movement for ten seconds. This is a reading aid, not karaoke synchronization. Plugin notifications are suppressed while fullscreen is open. The fullscreen view requests temporary wake protection, released when leaving the view. Availability depends on Steam/CEF; forced shutdown and battery exhaustion are not prevented.
+Press **X** to open fullscreen or use the expand icon beside Back in the compact reader. **B** returns to Player. When YouTube Music provides timestamps, the current lyric line is highlighted and kept centered using the actual audio position, including pauses and seeks. LRCLIB is a fallback when title, artist and duration match. This follows complete phrases, not individual words. Manual scrolling pauses automatic following for five seconds. Songs without timings retain the gentle reading loop, which waits five seconds at the bottom before restarting. Plugin notifications are suppressed while fullscreen is open. The fullscreen view requests temporary wake protection, released when leaving the view. Availability depends on Steam/CEF; forced shutdown and battery exhaustion are not prevented.
+
+Lyrics are fetched on demand and cached for up to six tracks. YouTube requests use a separate anonymous client. If a timing fallback is needed, LRCLIB receives song metadata (title, artist, album and duration), never Google cookies or audio. Availability and alignment depend on the provider and song version.
 
 ## Build on Windows
 

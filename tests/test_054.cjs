@@ -101,7 +101,7 @@ function lyricsTests() {
     '../services/lyrics': { loadLyrics:async () => ({ lyrics:'Test' }) },
     '../services/focus': { focusLyricsReader:() => () => {} },
     'react-icons/md':{}, 'react-icons/si': { SiYoutubemusic:'icon' },
-    '../services/lyricsScroll': {},
+    '../services/lyricsScroll': {}, '../services/syncedLyrics': {},
     '../services/notifications': {},
   });
   const root = elements.LyricsPanel({ onBack: () => { back++; } });

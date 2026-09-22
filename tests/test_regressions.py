@@ -22,6 +22,8 @@ class PlaybackTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.plugin = module.Plugin()
         self.plugin.ytmusic = Mock()
+        from ytm_lyrics import LyricsResolver
+        self.plugin._lyrics_resolver = LyricsResolver(api_factory=lambda: self.plugin.ytmusic)
         self.plugin.queue = []
         self.plugin._get_streaming_url = Mock(return_value='https://audio.test/stream')
 
@@ -60,18 +62,21 @@ class PlaybackTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_lyrics_string_and_object_ids(self):
         for value in ['MPLYt_test', {'browseId': 'MPLYt_test'}]:
+            self.plugin._lyrics_resolver.cache.clear()
             self.plugin.ytmusic.get_watch_playlist.return_value = {'lyrics': value}
             self.plugin.ytmusic.get_lyrics.return_value = {'lyrics': 'Text', 'source': 'Provider'}
             result = await self.plugin.get_lyrics('selected')
             self.assertEqual(result['lyrics'], 'Text')
-            self.plugin.ytmusic.get_lyrics.assert_called_with('MPLYt_test', timestamps=False)
+            self.plugin.ytmusic.get_lyrics.assert_called_with('MPLYt_test', timestamps=True)
             self.plugin.ytmusic.get_watch_playlist.assert_called_with(videoId='selected', radio=False)
 
     async def test_absent_lyrics_and_parser_errors(self):
         for watch in [{}, {'lyrics': None}]:
+            self.plugin._lyrics_resolver.cache.clear()
             self.plugin.ytmusic.get_watch_playlist.return_value = watch
             self.assertIsNone((await self.plugin.get_lyrics('selected'))['lyrics'])
         self.plugin.ytmusic.get_watch_playlist.side_effect = KeyError('endpoint')
+        self.plugin._lyrics_resolver.cache.clear()
         self.assertIsNone((await self.plugin.get_lyrics('selected'))['lyrics'])
         self.plugin.ytmusic.get_lyrics.assert_not_called()
 

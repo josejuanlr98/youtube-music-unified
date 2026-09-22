@@ -1,12 +1,13 @@
 import { DialogButton, Focusable, GamepadButton, Navigation, QuickAccessTab } from '@decky/ui';
 import { useEffect, useRef, useState } from 'react';
 import { FaArrowLeft, FaExpand } from 'react-icons/fa';
-import { addTrackChangeListener, getCurrentTrack, addCastConnectionListener, getIsCastConnected, getCastSenderName } from '../services/audioManager';
+import { addTrackChangeListener, getCurrentTrack, addCastConnectionListener, getIsCastConnected, getCastSenderName, getProgress, addProgressListener } from '../services/audioManager';
 import { loadLyrics, type LyricsResult } from '../services/lyrics';
 import { focusLyricsReader } from '../services/focus';
 
 import { MdCastConnected } from 'react-icons/md';
 import { SiYoutubemusic } from 'react-icons/si';
+import { followSyncedLyrics } from '../services/syncedLyrics';
 import { startLyricsScroll } from '../services/lyricsScroll';
 import { suppressFullscreenNotifications } from '../services/notifications';
 
@@ -30,6 +31,7 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const exitRef = useRef<HTMLDivElement>(null);
+  const [activeLine, setActiveLine] = useState(-1);
   const autoScroll = useRef<ReturnType<typeof startLyricsScroll> | null>(null);
   useEffect(() => focusLyricsReader(fullScreen ? exitRef.current : scrollRef.current), [fullScreen]);
   useEffect(() => addTrackChangeListener(setTrack), []);
@@ -37,10 +39,11 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
   useEffect(() => {
     let alive = true;
     setResult({});
+    setActiveLine(-1);
     setLoading(!!track?.videoId);
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
     if (track?.videoId) {
-      void loadLyrics(track.videoId).then(value => { if (alive) setResult(value); })
+      void loadLyrics(track.videoId, { ...track, duration:track.duration || getProgress().duration }).then(value => { if (alive) setResult(value); })
         .catch(() => { if (alive) setResult({ error: 'Could not load lyrics. Please try again.' }); })
         .finally(() => { if (alive) setLoading(false); });
     }
@@ -86,11 +89,15 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
   useEffect(() => fullScreen ? suppressFullscreenNotifications() : undefined, [fullScreen]);
   useEffect(() => addCastConnectionListener((connected, sender) => setCast({ connected, sender })), []);
   useEffect(() => {
-    if (!fullScreen || loading || !result.lyrics || !scrollRef.current) return;
-    const motion = startLyricsScroll(scrollRef.current);
+    if (loading || !result.lyrics || !scrollRef.current) return;
+    const lines = result.timedLines;
+    const motion = lines?.length
+      ? followSyncedLyrics(scrollRef.current, lines, () => getProgress().position, addProgressListener, setActiveLine)
+      : fullScreen ? startLyricsScroll(scrollRef.current) : null;
+    if (!motion) return;
     autoScroll.current = motion;
     return () => { motion.dispose(); autoScroll.current = null; };
-  }, [fullScreen, loading, result.lyrics, track?.videoId]);
+  }, [fullScreen, loading, result.lyrics, result.timedLines, track?.videoId]);
   const centered = fullScreen && (!track || (!loading && !result.lyrics && !result.error));
   const pauseMotion = () => autoScroll.current?.pause();
 
@@ -132,7 +139,14 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
     ? <span className="ytm-muted">Loading lyrics…</span>
     : result.error
       ? <span style={{ color: '#ffc3cb' }}>{result.error}</span>
-      : result.lyrics || (track ? 'Lyrics not available' : 'Your next song starts here.');
+      : result.timedLines?.length
+        ? <div style={{ paddingBlock:fullScreen ? '26vh' : '8vh' }}>
+            {result.timedLines.map((line, index) => <div key={index} data-lyric-index={index}
+              style={{ padding:'10px 0', minHeight:'1em', color:index === activeLine ? '#fff' : 'rgba(255,255,255,.38)', fontWeight:600, transition:'color 220ms ease', whiteSpace:'pre-wrap' }}>
+              {line.text || '\u00a0'}
+            </div>)}
+          </div>
+        : result.lyrics || (track ? 'Lyrics not available' : 'Your next song starts here.');
 
   return (
     <Focusable className="ytm-ui" flow-children="vertical"
@@ -156,15 +170,18 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
       </div>
       <div className="ytm-lyrics-layout" style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', gap: fullScreen ? 'clamp(18px, 4vw, 54px)' : 10, flex: 1, minHeight: 0, minWidth: 0, overflow: 'hidden', alignItems: fullScreen ? 'center' : 'stretch', justifyContent:fullScreen ? 'center' : undefined, maxWidth:fullScreen ? 860 : undefined, width:'100%', margin:fullScreen ? '0 auto' : undefined }}>
         <div style={{ width: fullScreen ? 'min(26vw, 260px, calc(100vh - 260px))' : 78, minWidth: fullScreen ? 100 : 78, maxWidth: fullScreen ? (centered ? '80%' : '30%') : 78, flex: '0 0 auto', overflow: 'hidden', textAlign: fullScreen ? 'center' : 'left' }}>
-          {fullScreen && cast.connected && <div className="ytm-muted" style={{ textAlign:'center', fontSize:12, lineHeight:1.4, marginBottom:12, overflowWrap:'anywhere' }}>
-            <MdCastConnected size={14} style={{ verticalAlign:'middle', marginRight:6 }} />{cast.sender ? `Casting from ${cast.sender}` : 'Casting from your device'}
+          {fullScreen && cast.connected && <div className="ytm-muted" style={{ textAlign:'center', fontSize:10, lineHeight:1.4, marginBottom:12, overflowWrap:'anywhere' }}>
+            <MdCastConnected size={12} style={{ verticalAlign:'middle', marginRight:6 }} />{cast.sender ? `Casting from ${cast.sender}` : 'Casting from your device'}
           </div>}
           {track?.albumArt ? <img src={artwork} onError={event => { if (event.currentTarget.src !== track.albumArt) event.currentTarget.src = track.albumArt; }} alt="Album art" style={{ width: fullScreen ? '100%' : 78, height: fullScreen ? 'min(26vw, 260px, calc(100vh - 260px))' : 78, aspectRatio: '1', display: 'block', maxWidth: '100%', objectFit: 'cover', borderRadius: fullScreen ? 16 : 9, boxShadow: fullScreen ? '0 18px 48px rgba(0,0,0,.4)' : undefined }} />
             : <div className="ytm-card" style={{ width: '100%', aspectRatio: '1', display: 'grid', placeItems: 'center' }}><SiYoutubemusic size={fullScreen ? 84 : 26} /></div>}
           <h2 style={{ fontSize: fullScreen ? 16 : 12, lineHeight: 1.3, margin: fullScreen ? '14px 0 4px' : '8px 0 4px', overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{track?.title ?? 'Nothing playing'}</h2>
           <div className="ytm-muted" style={{ fontSize: fullScreen ? 13 : 10, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{track?.artist || 'Play a song to see its lyrics.'}</div>
 
-          {result.source && <div className="ytm-hint" style={{ marginTop: 10, fontSize: 9, overflowWrap: 'anywhere' }}>{result.source}</div>}
+          {result.source && <div className="ytm-hint" style={{ marginTop: 10, fontSize: 9, overflowWrap: 'anywhere' }}>
+            {result.timingSource !== 'lrclib' && <><SiYoutubemusic size={11} aria-hidden="true" style={{ verticalAlign:'middle', marginRight:4 }} />YouTube Music{result.source !== 'YouTube Music' ? ' · ' : ''}</>}
+            {result.source !== 'YouTube Music' ? result.source : ''}
+          </div>}
         </div>
         {!centered && <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 0', maxWidth:fullScreen ? 620 : undefined, alignSelf: 'stretch', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
           <Focusable ref={scrollRef} preferredFocus={!fullScreen} tabIndex={0} onWheel={pauseMotion} onTouchStart={pauseMotion} onTouchMove={pauseMotion} onPointerDown={pauseMotion} focusClassName="gpfocus"
