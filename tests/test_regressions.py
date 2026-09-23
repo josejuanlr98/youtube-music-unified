@@ -161,6 +161,48 @@ class QueueEditingTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn('error', await p.set_notification_settings({'tracks':'yes'}))
 
 
+class ArtworkPaletteTests(unittest.IsolatedAsyncioTestCase):
+    class Response:
+        def __init__(self, url, mime='image/jpeg', data=b'cover'):
+            self.url, self.mime, self.data = url, mime, data
+            self.headers = self
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+        def geturl(self): return self.url
+        def get_content_type(self): return self.mime
+        def read(self, _): return self.data
+
+    async def test_artwork_fallback_is_small_and_google_only(self):
+        from unittest.mock import patch
+        p = module.Plugin()
+        with patch.object(module.urllib.request, 'urlopen') as urlopen:
+            self.assertEqual(await p.get_artwork_data_url('https://example.com/cover.jpg'), {})
+            urlopen.assert_not_called()
+        allowed = 'https://lh3.googleusercontent.com/cover=w64-h64'
+        with patch.object(module.urllib.request, 'urlopen', return_value=self.Response(allowed)):
+            result = await p.get_artwork_data_url(allowed)
+            self.assertTrue(result['dataUrl'].startswith('data:image/jpeg;base64,'))
+
+    async def test_cast_artwork_fallback(self):
+        from unittest.mock import patch
+        p = module.Plugin()
+        allowed = 'https://i.ytimg.com/vi/test/hqdefault.jpg'
+        with patch.object(module.urllib.request, 'urlopen', return_value=self.Response(allowed)):
+            self.assertTrue((await p.get_artwork_data_url(allowed))['dataUrl'].startswith('data:image/jpeg;base64,'))
+        with patch.object(module.urllib.request, 'urlopen') as fetch:
+            self.assertEqual(await p.get_artwork_data_url('https://ytimg.com.example.org/art.jpg'), {})
+            fetch.assert_not_called()
+
+    async def test_artwork_fallback_rejects_redirects_and_large_files(self):
+        from unittest.mock import patch
+        p = module.Plugin()
+        allowed = 'https://lh3.googleusercontent.com/cover'
+        with patch.object(module.urllib.request, 'urlopen', return_value=self.Response('https://example.com/cover')):
+            self.assertEqual(await p.get_artwork_data_url(allowed), {})
+        with patch.object(module.urllib.request, 'urlopen', return_value=self.Response(allowed, data=b'x' * 524289)):
+            self.assertEqual(await p.get_artwork_data_url(allowed), {})
+
+
 class WatchParserTests(unittest.TestCase):
     def test_optional_tabs(self):
         for response in [{}, {'tabs': []}, {'tabs': [{}, {'tabRenderer': {}}]},

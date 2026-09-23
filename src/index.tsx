@@ -1,6 +1,6 @@
 import { staticClasses, DialogButton, Focusable, Navigation, Tabs } from '@decky/ui';
 import { definePlugin, routerHook } from '@decky/api';
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { SiYoutubemusic } from 'react-icons/si';
 import { BsGearFill } from 'react-icons/bs';
 
@@ -14,7 +14,7 @@ import { clearLyricsCache } from './services/lyrics';
 import { SearchPage } from './components/SearchPage';
 import { LyricsPanel, LYRICS_ROUTE } from './components/LyricsPage';
 import { initAudio, destroyAudio } from './services/audioManager';
-import { initNotifications } from './services/notifications';
+import { initNotifications, registerNotificationPanel } from './services/notifications';
 
 const SETTINGS_ROUTE = '/youtube-music-settings';
 const SEARCH_ROUTE = '/youtube-music-search';
@@ -41,6 +41,8 @@ const removeThemeStyles = () => document.getElementById(THEME_STYLE_ID)?.remove(
 // Keep Decky's Tabs interaction (including L1/R1) while constraining only our
 // own panel. The ancestor Quick Access layout is left untouched.
 const TabsContainer = memo(() => {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => panelRef.current ? registerNotificationPanel(panelRef.current) : undefined, []);
   const [activeTab, setActiveTab] = useState('player');
   useEffect(() => {
     const returnToPlayer = () => setActiveTab('player');
@@ -52,7 +54,7 @@ const TabsContainer = memo(() => {
     { id:'queue', title:'Queue', content:<QueueView /> },
     { id:'library', title:'Library', content:<LibraryView onSwitchToPlayer={() => setActiveTab('player')} /> },
   ], []);
-  return <div id="ytm-tabs-container" className="ytm-ui" style={{
+  return <div ref={panelRef} id="ytm-tabs-container" className="ytm-ui" style={{
     width:'100%',
     maxWidth:'100%',
     minWidth:0,

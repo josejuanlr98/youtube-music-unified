@@ -8,7 +8,7 @@ let effects = [], calls = [];
 const jsx = (type, props) => ({ type, props });
 const modules = {
   'react/jsx-runtime': { jsx, jsxs:jsx },
-  'react': { useState:value => [value, () => {}], useEffect:fn => effects.push(fn) },
+  'react': { useState:value => [value, () => {}], useEffect:fn => effects.push(fn), useRef:()=>({current:null}) },
   '@decky/api': { call:async name => { calls.push(name); return { rating:'LIKE', playlists:[] }; } },
   '@decky/ui': { DialogButton:'button', Focusable:'focusable', Navigation:{} },
   '../context/PlayerContext': { usePlayer:() => state },
@@ -16,6 +16,9 @@ const modules = {
   './Section': { Section:'section' },
   './VolumeSlider': { VolumeSlider:'volume', PaddedSlider:'slider' },
   './LyricsPage': { LyricsPanel:'lyrics' },
+  '../services/artworkPalette': { useArtworkAccent:() => '180,202,220' },
+  './ArtworkBackdrop': { ArtworkBackdrop:'backdrop' },
+  './ThemeScope': { ThemeScope:'theme' },
 };
 function load(file) {
   const exports = {};

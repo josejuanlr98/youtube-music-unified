@@ -10,12 +10,31 @@ export interface NotificationSettings {
   trackSound: boolean;
 }
 const notificationLogo = () => <div style={{ width:48, height:48, display:'flex', alignItems:'center', justifyContent:'center', alignSelf:'center', flexShrink:0 }}>
-  <SiYoutubemusic size={40} style={{ width:40, height:40, display:'block', flexShrink:0 }} />
+  <SiYoutubemusic size={32} style={{ width:32, height:32, display:'block', flexShrink:0 }} />
 </div>;
 let settings: NotificationSettings = { connections:true, tracks:true, connectionSound:false, trackSound:false };
 let ready = false;
 let fullscreenReaders = 0;
 let dismissVisible: (() => void) | undefined;
+const panels = new Set<HTMLElement>();
+export function registerNotificationPanel(element: HTMLElement) {
+  panels.add(element);
+  if (panelVisible()) dismissVisible?.();
+  return () => { panels.delete(element); };
+}
+function panelVisible() {
+  return [...panels].some(element => {
+    if (!element.isConnected || element.ownerDocument.visibilityState === 'hidden' || !element.getClientRects().length) return false;
+    const view = element.ownerDocument.defaultView;
+    for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+      const style = view?.getComputedStyle(node);
+      if (style?.display === 'none' || style?.visibility === 'hidden' || style?.opacity === '0' || node.getAttribute('aria-hidden') === 'true') return false;
+    }
+    const rect = element.getBoundingClientRect();
+    return rect.bottom > 0 && rect.right > 0 && rect.top < (view?.innerHeight || 0) && rect.left < (view?.innerWidth || 0);
+  });
+}
+const notificationsSuppressed = () => fullscreenReaders > 0 || panelVisible();
 export function suppressFullscreenNotifications() {
   fullscreenReaders++;
   dismissVisible?.();
@@ -66,7 +85,7 @@ export function initNotifications() {
     // explicitly silent toasts at the final playback method, including delayed ones.
     soundPatch = replacePatch(store, 'PlayNotificationSound', (args: any[]) => {
       const notification = args[0];
-      if (notification?.decky && notification.data?.ytmNotification === true && (fullscreenReaders > 0 || notification.data.playSound === false)) return;
+      if (notification?.decky && notification.data?.ytmNotification === true && (notificationsSuppressed() || notification.data.playSound === false)) return;
       return callOriginal;
     });
   };
@@ -74,7 +93,7 @@ export function initNotifications() {
   const timers = new Set<ReturnType<typeof setTimeout>>();
   dismissVisible = () => { active.forEach(item => item.dismiss()); active.clear(); };
   const toast = (data: Parameters<typeof toaster.toast>[0]) => {
-    if (!alive || !ready || fullscreenReaders > 0) return;
+    if (!alive || !ready || notificationsSuppressed()) return;
     try {
       ensureSoundPatch();
       // Keep fast skips from filling the Steam notification queue.

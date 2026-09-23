@@ -103,6 +103,10 @@ function lyricsTests() {
     'react-icons/md':{}, 'react-icons/si': { SiYoutubemusic:'icon' },
     '../services/lyricsScroll': {}, '../services/syncedLyrics': {},
     '../services/notifications': {},
+    '../services/artworkPalette': { useArtworkPalette:() => ['180,202,220','72,101,137','43,66,96'] },
+    './ArtworkBackdrop': { ArtworkBackdrop:'backdrop' },
+    './ThemeScope': { ThemeScope:'theme' },
+    '../services/lyricsSource': { lyricsSource:s=>s },
   });
   const root = elements.LyricsPanel({ onBack: () => { back++; } });
   const event = button => ({ detail:{ button }, preventDefault() {}, stopPropagation() {} });
@@ -115,8 +119,8 @@ function lyricsTests() {
   root.props.onButtonDown(event(5)); assert.equal(scroll.scrollTop, 0);
   root.props.onCancelButton(event(2)); assert.equal(back, 1);
   assert.equal(nodes.some(node => node.type === 'button' && JSON.stringify(node.props.children).includes('Page down')), false);
-  assert.equal(nodes.some(node => node.props?.style?.textAlign === 'center' && ['L1','R1','Up','Down'].every(label => JSON.stringify(node.props.children).includes(label))), true);
-  console.log('PASS lyrics cruceta, L1/R1, B and centered hint invoke the expected actions');
+  assert.equal(nodes.some(node => node.props?.style?.textAlign === 'center' && ['L1','R1','Up','Down'].every(label => JSON.stringify(node.props.children).includes(label))), false);
+  console.log('PASS compact lyrics controls work without the removed bumper hint');
 }
 
 function focusTests() {

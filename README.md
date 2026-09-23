@@ -2,7 +2,9 @@
 
 A Steam Deck plugin that plays YouTube Music from Quick Access and turns the Deck into a YouTube Cast receiver. It combines local playback, queue, library, lyrics, controller-friendly controls, notifications, and Cast discovery on trusted networks.
 
-The current stable version is **0.6.6**. Most users should install the ZIP attached to a Release.
+The current stable version is **0.6.7**. Most users should install the ZIP attached to the latest Release.
+
+Fullscreen lyrics use an animated, cover-colored gradient with a darker text layer for readability. Cover colors are extracted through Decky's CORS-safe resource fetch, with a bounded local fallback for Steam's embedded browser.
 
 ## Features
 
@@ -11,7 +13,7 @@ The current stable version is **0.6.6**. Most users should install the ZIP attac
 - Local playback and YouTube / YouTube Music Cast session receiving.
 - Cast discovery restricted to networks marked as trusted.
 - Configurable Cast receiver name.
-- Fullscreen lyrics with larger artwork. Press **X** from Player or the compact lyrics reader to open fullscreen, **B** to return, and D-pad or **L1/R1** to scroll manually. Real line-synchronized lyrics highlight and follow the song when timestamps are available; otherwise fullscreen uses gentle automatic reading scroll.
+- Fullscreen lyrics with cover-based colors and a softly animated album background. Press **X** from Player or the compact lyrics reader to open fullscreen, **B** to return, stick/D-pad **up/down** to scroll, **L1/R1** for previous/next track, and **A** to play/pause. Real line-synchronized lyrics highlight and follow the song when timestamps are available; otherwise fullscreen uses gentle automatic reading scroll.
 - Gamepad-controlled progress and volume sliders.
 - Like/dislike, shuffle, repeat, and playlist library.
 - Native Decky notifications for device connections and song changes. Each notification and sound is configurable separately; sounds are disabled by default.
@@ -21,17 +23,17 @@ The current stable version is **0.6.6**. Most users should install the ZIP attac
 
 ![Player](screenshots/player.jpeg)
 
-![Player with Cast](screenshots/player-cast.jpeg)
+![Fullscreen Cast lyrics](screenshots/player-cast.jpeg)
 
-![Player options](screenshots/player-options.jpeg)
+![Player controls](screenshots/player-options.jpeg)
 
 ![Queue](screenshots/queue.jpeg)
 
-![Lyrics](screenshots/lyrics.jpeg)
+![Compact lyrics](screenshots/lyrics.jpeg)
 
 ## Quick installation
 
-1. Download `youtube-music-unified-0.6.6.zip` from **Releases**.
+1. Download `youtube-music-unified-0.6.7.zip` from **Releases**.
 2. In Gaming Mode, open Decky → Developer Options → **Install from ZIP**.
 3. Select the ZIP and restart Decky if the previous version is still shown.
 4. For Cast, enable your trusted network in **Settings → Cast Receiver**. To use the built-in library, also sign in through **Settings → Account**.
@@ -98,6 +100,16 @@ With Steamcord installed, native notifications may remain hidden. The plugin avo
 Press **X** to open fullscreen or use the expand icon beside Back in the compact reader. **B** returns to Player. When YouTube Music provides timestamps, the current lyric line is highlighted and kept centered using the actual audio position, including pauses and seeks. LRCLIB is a fallback when title, artist and duration match. This follows complete phrases, not individual words. Manual scrolling pauses automatic following for five seconds. Songs without timings retain the gentle reading loop, which waits five seconds at the bottom before restarting. Plugin notifications are suppressed while fullscreen is open. The fullscreen view requests temporary wake protection, released when leaving the view. Availability depends on Steam/CEF; forced shutdown and battery exhaustion are not prevented.
 
 Lyrics are fetched on demand and cached for up to six tracks. YouTube requests use a separate anonymous client. If a timing fallback is needed, LRCLIB receives song metadata (title, artist, album and duration), never Google cookies or audio. Availability and alignment depend on the provider and song version.
+
+The subdued `Source:` credit names the provider reported by the lyrics response (for example, Musixmatch or LyricFind), or LRCLIB when its matching timed lyrics are used. YouTube Music remains the source label if no more specific provider is reported. Untimed lyrics only loop automatically in fullscreen; the compact reader stays manual. Timed lyrics follow playback in both views.
+
+Fullscreen receives initial controller focus: use **A** to play/pause and **B** to return. The redundant Exit button has been removed. The compact reader retains manual bumper scrolling without displaying the old instruction text.
+
+Cover colors are sampled from a 32×32 canvas once per artwork with a bounded cache, using lightweight color quantization rather than a new palette dependency. If CORS prevents sampling, the neutral accent remains. Only fullscreen animates the background; the animation pauses when the document is hidden and respects reduced-motion preferences. This is ambient motion, not audio beat detection.
+
+### Playback history and view counts
+
+Library playback currently extracts an audio URL and plays it through an audio element; it does not explicitly submit an account-history entry. Cast's receiver dependency attempts to mark videos watched during some playlist-navigation flows, so history can behave differently when casting. Neither path guarantees that every play appears in account history or counts toward YouTube's official views, artist statistics, royalties, or Recap. Those are determined by YouTube, not by this plugin.
 
 ## Build on Windows
 

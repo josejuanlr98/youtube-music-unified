@@ -1,7 +1,7 @@
 import { DialogButton, Focusable, GamepadButton, Navigation, QuickAccessTab } from '@decky/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FaArrowLeft, FaExpand } from 'react-icons/fa';
-import { addTrackChangeListener, getCurrentTrack, addCastConnectionListener, getIsCastConnected, getCastSenderName, getProgress, addProgressListener } from '../services/audioManager';
+import { addTrackChangeListener, getCurrentTrack, addCastConnectionListener, getIsCastConnected, getCastSenderName, getProgress, addProgressListener, playNext, playPrevious, togglePlayback } from '../services/audioManager';
 import { loadLyrics, type LyricsResult } from '../services/lyrics';
 import { focusLyricsReader } from '../services/focus';
 
@@ -10,6 +10,10 @@ import { SiYoutubemusic } from 'react-icons/si';
 import { followSyncedLyrics } from '../services/syncedLyrics';
 import { startLyricsScroll } from '../services/lyricsScroll';
 import { suppressFullscreenNotifications } from '../services/notifications';
+import { useArtworkPalette } from '../services/artworkPalette';
+import { ArtworkBackdrop } from './ArtworkBackdrop';
+import { ThemeScope } from './ThemeScope';
+import { lyricsSource } from '../services/lyricsSource';
 
 export const LYRICS_ROUTE = '/youtube-music-lyrics';
 
@@ -30,10 +34,10 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
   const [attempt, setAttempt] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const exitRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [activeLine, setActiveLine] = useState(-1);
   const autoScroll = useRef<ReturnType<typeof startLyricsScroll> | null>(null);
-  useEffect(() => focusLyricsReader(fullScreen ? exitRef.current : scrollRef.current), [fullScreen]);
+  useEffect(() => focusLyricsReader(fullScreen ? rootRef.current : scrollRef.current), [fullScreen]);
   useEffect(() => addTrackChangeListener(setTrack), []);
 
   useEffect(() => {
@@ -99,7 +103,18 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
     return () => { motion.dispose(); autoScroll.current = null; };
   }, [fullScreen, loading, result.lyrics, result.timedLines, track?.videoId]);
   const centered = fullScreen && (!track || (!loading && !result.lyrics && !result.error));
+  const source = lyricsSource(result.source);
   const pauseMotion = () => autoScroll.current?.pause();
+  const palette = useArtworkPalette(track?.albumArt, rootRef);
+  const accent = palette[0];
+  const transportBusy = useRef(false);
+  const changeTrack = async (previous: boolean) => {
+    if (transportBusy.current || !track) return;
+    transportBusy.current = true;
+    try { await (previous ? playPrevious() : playNext()); }
+    catch { /* Keep the reader usable if the transport is temporarily unavailable. */ }
+    finally { transportBusy.current = false; }
+  };
 
   const scroll = (direction: number, page = false) => {
     pauseMotion();
@@ -128,12 +143,12 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
     }
   });
   const openFullscreen = () => { Navigation.CloseSideMenus(); Navigation.Navigate(LYRICS_ROUTE); };
-  const rootStyle = fullScreen
-    ? { width: '100%', maxWidth: '100%', minWidth: 0, top: 40, bottom: 40, left: 0, right: 0, minHeight: 0, overflow: 'hidden', boxSizing: 'border-box' as const, padding: 'clamp(16px, 3vw, 42px)', display: 'flex', flexDirection: 'column' as const, gap: 16, background: '#080b11', position: 'fixed' as const }
-    : { width: '100%', maxWidth: '100%', minWidth: 0, height: '100%', minHeight: 0, overflow: 'hidden', boxSizing: 'border-box' as const, padding: '6px 4px 4px', display: 'flex', flexDirection: 'column' as const, gap: 8, background: '#101823' };
+  const rootStyle: CSSProperties = fullScreen
+    ? { width: '100%', maxWidth: '100%', minWidth: 0, top: 40, bottom: 40, left: 0, right: 0, minHeight: 0, overflow: 'hidden', boxSizing: 'border-box' as const, padding: '16px clamp(16px, 3vw, 42px)', display: 'flex', flexDirection: 'column' as const, background: '#080b11', position: 'fixed' as const, outline:'none' }
+    : { position:'relative', isolation:'isolate', width: '100%', maxWidth: '100%', minWidth: 0, height: '100%', minHeight: 0, overflow: 'hidden', boxSizing: 'border-box' as const, padding: '6px 4px 4px', display: 'flex', flexDirection: 'column' as const, gap: 8, background: '#101823' };
   const readerStyle = fullScreen
-    ? { flex: '1 1 0', minHeight: 0, boxSizing: 'border-box' as const, padding: 'clamp(14px, 2.5vw, 32px)', overflowY: 'scroll' as const, overscrollBehavior: 'contain' as const, scrollBehavior: 'auto' as const, textAlign: 'center' as const, fontSize: 'clamp(15px, 1.65vw, 24px)', lineHeight: 1.65, whiteSpace: 'pre-wrap' as const, overflowWrap: 'anywhere' as const }
-    : { flex: '1 1 0', minHeight: 0, boxSizing: 'border-box' as const, padding: '10px 12px', overflowY: 'scroll' as const, overscrollBehavior: 'contain' as const, scrollBehavior: 'smooth' as const, fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap' as const, overflowWrap: 'anywhere' as const };
+    ? { flex: '1 1 0', minHeight: 0, boxSizing: 'border-box' as const, padding: 'clamp(18px, 3vw, 40px)', overflowY: 'scroll' as const, overscrollBehavior: 'contain' as const, scrollBehavior: 'auto' as const, textAlign: 'center' as const, fontSize: 'clamp(20px, 2.1vw, 32px)', lineHeight: 1.8, whiteSpace: 'pre-wrap' as const, overflowWrap: 'anywhere' as const }
+    : { flex: '1 1 0', minHeight: 0, boxSizing: 'border-box' as const, padding: '10px 12px', overflowY: 'scroll' as const, overscrollBehavior: 'contain' as const, scrollBehavior: 'smooth' as const, fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap' as const, overflowWrap: 'anywhere' as const };
 
   const lyricsContent = loading
     ? <span className="ytm-muted">Loading lyrics…</span>
@@ -142,49 +157,62 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
       : result.timedLines?.length
         ? <div style={{ paddingBlock:fullScreen ? '26vh' : '8vh' }}>
             {result.timedLines.map((line, index) => <div key={index} data-lyric-index={index}
-              style={{ padding:'10px 0', minHeight:'1em', color:index === activeLine ? '#fff' : 'rgba(255,255,255,.38)', fontWeight:600, transition:'color 220ms ease', whiteSpace:'pre-wrap' }}>
-              {line.text || '\u00a0'}
+              className={`ytm-lyric-line${index === activeLine ? ' ytm-lyric-active' : ''}`}
+              style={{ display:'block', position:'relative', padding:fullScreen ? '18px 0' : '9px 0', margin:0, lineHeight:1.6, fontWeight:600, whiteSpace:'pre-wrap', color:index === activeLine ? '#fff' : 'rgba(255,255,255,.42)' }}>
+              <span style={{ display:'block', transform:index === activeLine ? `scale(${fullScreen ? 1.08 : 1.03})` : `scale(${fullScreen ? .90 : .92})`, opacity:index === activeLine ? 1 : .68, transformOrigin:'center', transition:'transform 220ms cubic-bezier(.2,.8,.2,1), opacity 160ms ease-out' }}>{line.text || '\u00a0'}</span>
             </div>)}
           </div>
         : result.lyrics || (track ? 'Lyrics not available' : 'Your next song starts here.');
 
   return (
-    <Focusable className="ytm-ui" flow-children="vertical"
-      style={rootStyle}
+    <Focusable ref={rootRef} tabIndex={fullScreen ? 0 : undefined} preferredFocus={fullScreen} noFocusRing className={`ytm-ui ytm-lyrics-view${fullScreen ? ' ytm-immersive' : ''}`} flow-children="vertical"
+      style={{ ...rootStyle, '--ytm-cover-accent':accent } as CSSProperties & { '--ytm-cover-accent':string }}
       onCancelButton={event => { event.preventDefault(); event.stopPropagation(); leave(); }}
       onSecondaryActionDescription={!fullScreen ? 'Fullscreen' : undefined}
       onSecondaryButton={!fullScreen ? event => { event.preventDefault(); event.stopPropagation(); openFullscreen(); } : undefined}
       onCancelActionDescription="Back to player"
+      onOKActionDescription={fullScreen ? 'Play / pause' : undefined}
+      onOKButton={fullScreen ? event => { event.preventDefault(); event.stopPropagation(); if (track) togglePlayback(); } : undefined}
+      onGamepadDirection={fullScreen ? event => {
+        const button = event.detail.button;
+        if (button === GamepadButton.DIR_UP || button === GamepadButton.DIR_DOWN) {
+          event.preventDefault(); event.stopPropagation(); scroll(button === GamepadButton.DIR_UP ? -1 : 1);
+        }
+      } : undefined}
       onButtonDown={event => {
         const button = event.detail.button;
         if (button === GamepadButton.BUMPER_LEFT || button === GamepadButton.BUMPER_RIGHT) {
           event.preventDefault(); event.stopPropagation();
-          scroll(button === GamepadButton.BUMPER_LEFT ? -1 : 1, true);
+          if (fullScreen) {
+            if (!event.detail.is_repeat) void changeTrack(button === GamepadButton.BUMPER_LEFT);
+          } else scroll(button === GamepadButton.BUMPER_LEFT ? -1 : 1, true);
         }
       }}>
-      {fullScreen && track?.albumArt && <div aria-hidden="true" style={{ position: 'absolute', inset: 0, backgroundImage: `url(${track.albumArt})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(32px)', opacity: .16, transform: 'scale(1.12)' }} />}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexShrink: 0, minHeight:28, alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 }}>
-        <div style={{ minWidth: 0, textAlign: fullScreen ? 'center' : 'left', flex: 1, padding: fullScreen ? '0 70px' : 0 }}>{!fullScreen && <div className="ytm-eyebrow">Lyrics</div>}<div style={{ margin: '2px 0 0', fontSize: fullScreen ? 20 : 15, fontWeight: 700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{!fullScreen && (track?.title || 'Now playing')}</div></div>
+      <ThemeScope />
+      {fullScreen && <ArtworkBackdrop palette={palette} animated />}
+      {!fullScreen && <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexShrink: 0, minHeight:28, alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 }}>
+        {!fullScreen && <SiYoutubemusic className="ytm-cover-logo" size={22} style={{ color:`rgb(${accent})`, flexShrink:0 }} aria-label="YouTube Music" />}
+        <div style={{ minWidth: 0, textAlign:'left', flex: 1, padding:0 }}><div style={{ fontSize:15, fontWeight:700 }}>Lyrics</div></div>
         {!fullScreen && <DialogButton className="ytm-button" aria-label="Fullscreen" onOKActionDescription="Fullscreen" style={{ width:32, flexShrink:0, minWidth:32, height:28, minHeight:28, padding:0, margin:0, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={openFullscreen}><FaExpand size={13} /></DialogButton>}
-        <DialogButton ref={exitRef} preferredFocus={fullScreen} className="ytm-button" style={{ position:fullScreen ? 'absolute' : undefined, right:fullScreen ? 0 : undefined, background:fullScreen ? 'transparent' : undefined, borderColor:fullScreen ? 'transparent' : undefined, width: fullScreen ? 58 : 72, minWidth: 0, height: 28, minHeight: 28, padding: '0 8px', lineHeight: '28px', margin: 0, fontSize: 11 }} onClick={leave}><FaArrowLeft /> {fullScreen ? 'Exit' : 'Back'}</DialogButton>
-      </div>
+        <DialogButton className="ytm-button" onOKActionDescription="Back" style={{ width:72, minWidth:0, height:28, minHeight:28, padding:'0 8px', lineHeight:'28px', margin:0, fontSize:11 }} onClick={leave}><FaArrowLeft /> Back</DialogButton>
+      </div>}
       <div className="ytm-lyrics-layout" style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', gap: fullScreen ? 'clamp(18px, 4vw, 54px)' : 10, flex: 1, minHeight: 0, minWidth: 0, overflow: 'hidden', alignItems: fullScreen ? 'center' : 'stretch', justifyContent:fullScreen ? 'center' : undefined, maxWidth:fullScreen ? 860 : undefined, width:'100%', margin:fullScreen ? '0 auto' : undefined }}>
-        <div style={{ width: fullScreen ? 'min(26vw, 260px, calc(100vh - 260px))' : 78, minWidth: fullScreen ? 100 : 78, maxWidth: fullScreen ? (centered ? '80%' : '30%') : 78, flex: '0 0 auto', overflow: 'hidden', textAlign: fullScreen ? 'center' : 'left' }}>
+        <div className="ytm-cover-column" style={{ width: fullScreen ? 'min(26vw, 260px, max(80px, calc(100vh - 360px)))' : 78, minWidth: fullScreen ? 80 : 78, maxWidth: fullScreen ? (centered ? '80%' : '30%') : 78, maxHeight:fullScreen ? '100%' : undefined, flex: '0 0 auto', overflowY: fullScreen ? 'auto' : 'hidden', textAlign: fullScreen ? 'center' : 'left', paddingBlock:fullScreen ? 8 : 0, boxSizing:'border-box' }}>
+          {fullScreen && track && <SiYoutubemusic className="ytm-cover-logo" size={44} style={{ display:'block', width:44, height:44, minHeight:44, overflow:'visible', margin:'0 auto 20px', color:`rgb(${accent})` }} aria-label="YouTube Music" />}
           {fullScreen && cast.connected && <div className="ytm-muted" style={{ textAlign:'center', fontSize:10, lineHeight:1.4, marginBottom:12, overflowWrap:'anywhere' }}>
-            <MdCastConnected size={12} style={{ verticalAlign:'middle', marginRight:6 }} />{cast.sender ? `Casting from ${cast.sender}` : 'Casting from your device'}
+            <MdCastConnected size={12} style={{ verticalAlign:'middle', marginRight:6 }} />{cast.sender || 'Connected device'}
           </div>}
-          {track?.albumArt ? <img src={artwork} onError={event => { if (event.currentTarget.src !== track.albumArt) event.currentTarget.src = track.albumArt; }} alt="Album art" style={{ width: fullScreen ? '100%' : 78, height: fullScreen ? 'min(26vw, 260px, calc(100vh - 260px))' : 78, aspectRatio: '1', display: 'block', maxWidth: '100%', objectFit: 'cover', borderRadius: fullScreen ? 16 : 9, boxShadow: fullScreen ? '0 18px 48px rgba(0,0,0,.4)' : undefined }} />
+          {track?.albumArt ? <img src={artwork} onError={event => { if (event.currentTarget.src !== track.albumArt) event.currentTarget.src = track.albumArt; }} alt="Album art" style={{ width: fullScreen ? '100%' : 78, height: fullScreen ? 'auto' : 78, aspectRatio: '1', display: 'block', maxWidth: '100%', objectFit: 'cover', borderRadius: fullScreen ? 8 : 4, boxShadow:'none' }} />
             : <div className="ytm-card" style={{ width: '100%', aspectRatio: '1', display: 'grid', placeItems: 'center' }}><SiYoutubemusic size={fullScreen ? 84 : 26} /></div>}
           <h2 style={{ fontSize: fullScreen ? 16 : 12, lineHeight: 1.3, margin: fullScreen ? '14px 0 4px' : '8px 0 4px', overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{track?.title ?? 'Nothing playing'}</h2>
-          <div className="ytm-muted" style={{ fontSize: fullScreen ? 13 : 10, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{track?.artist || 'Play a song to see its lyrics.'}</div>
+          <div className="ytm-muted" style={{ fontSize: fullScreen ? 13 : 10, lineHeight: 1.35, overflowWrap: 'anywhere', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{track?.artist || 'Play a song to see its lyrics.'}</div>
 
-          {result.source && <div className="ytm-hint" style={{ marginTop: 10, fontSize: 9, overflowWrap: 'anywhere' }}>
-            {result.timingSource !== 'lrclib' && <><SiYoutubemusic size={11} aria-hidden="true" style={{ verticalAlign:'middle', marginRight:4 }} />YouTube Music{result.source !== 'YouTube Music' ? ' · ' : ''}</>}
-            {result.source !== 'YouTube Music' ? result.source : ''}
+          {source && <div className="ytm-lyrics-source" style={{ marginTop:12, fontSize:fullScreen ? 10 : 9, lineHeight:1.4, color:`rgb(${accent})`, opacity:.82, overflowWrap:'anywhere' }}>
+            Source: {source}
           </div>}
         </div>
         {!centered && <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 0', maxWidth:fullScreen ? 620 : undefined, alignSelf: 'stretch', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
-          <Focusable ref={scrollRef} preferredFocus={!fullScreen} tabIndex={0} onWheel={pauseMotion} onTouchStart={pauseMotion} onTouchMove={pauseMotion} onPointerDown={pauseMotion} focusClassName="gpfocus"
+          <Focusable ref={scrollRef} preferredFocus={!fullScreen} noFocusRing tabIndex={0} onWheel={pauseMotion} onTouchStart={pauseMotion} onTouchMove={pauseMotion} onPointerDown={pauseMotion} focusClassName="ytm-reader-focus"
             className="ytm-reader ytm-card" role="region" aria-label="Song lyrics"
             onGamepadDirection={event => {
               const button = event.detail.button;
@@ -197,16 +225,12 @@ export const LyricsPanel = ({ onBack, fullScreen = false }: LyricsPanelProps) =>
                 event.preventDefault(); scroll(event.key.endsWith('Up') ? -1 : 1, event.key.startsWith('Page'));
               }
             }}
-            style={readerStyle}>
+            style={{ ...readerStyle, outline:'none', ...(fullScreen ? { background:'transparent', border:0, boxShadow:'none', WebkitMaskImage:'linear-gradient(transparent,#000 12%,#000 86%,transparent)' } : {}) }}>
             {lyricsContent}
           </Focusable>
           {result.error && <Focusable flow-children="horizontal" style={{ display: 'flex', flexShrink: 0, justifyContent: 'center', minWidth: 0 }}>
             <DialogButton className="ytm-button" style={{ width: 96, minWidth: 0, height: 32, minHeight: 32, padding: '0 8px', margin: 0, lineHeight: '32px', fontSize: 12 }} onClick={() => setAttempt(value => value + 1)}>Retry</DialogButton>
           </Focusable>}
-          {!fullScreen && <div className="ytm-hint" style={{ fontSize: fullScreen ? 12 : 10, textAlign: 'center', width: '100%', display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '4px 8px' }}>
-            <span><span className="ytm-key">L1</span> Up</span>
-            <span><span className="ytm-key">R1</span> Down</span>
-          </div>}
         </div>}
       </div>
     </Focusable>

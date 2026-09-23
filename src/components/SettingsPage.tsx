@@ -3,6 +3,19 @@ import { call } from '@decky/api';
 import { useEffect, useState } from 'react';
 import { apiGetNetwork, apiTrustNetwork, apiUntrustNetwork, disconnectCast } from '../services/audioManager';
 import { loadNotificationSettings, saveNotificationSettings, type NotificationSettings } from '../services/notifications';
+import { getVisualDiagnostics } from '../services/visualDiagnostics';
+
+const VisualDiagnosticsContent = () => {
+  const [events, setEvents] = useState(getVisualDiagnostics);
+  return <div style={{ padding:20, color:'#f4f6fa' }}>
+    <h3>Visual diagnostics · beta.9</h3>
+    <p style={{ fontSize:12 }}>Open fullscreen for a few seconds, then return here. These results stay on your Deck.</p>
+    <ButtonItem onClick={() => setEvents(getVisualDiagnostics())}>Refresh results</ButtonItem>
+    <div style={{ fontSize:11, lineHeight:1.6, overflowWrap:'anywhere' }}>
+      {events.length ? events.map((event, i) => <div key={i}>{event}</div>) : 'No visual activity recorded yet.'}
+    </div>
+  </div>;
+};
 
 const NotificationsContent = () => {
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
@@ -237,6 +250,7 @@ export const SettingsPage = () => (
       { title: 'Account', content: <AuthContent />, route: '/youtube-music-settings/auth', visible: true },
       { title: 'Cast Receiver', content: <CastContent />, route: '/youtube-music-settings/cast', visible: true },
       { title: 'Notifications', content: <NotificationsContent />, route: '/youtube-music-settings/notifications', visible: true },
+      { title: 'Visual diagnostics', content: <VisualDiagnosticsContent />, route: '/youtube-music-settings/visuals', visible: true },
     ]}
   />
 );

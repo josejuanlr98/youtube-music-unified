@@ -23,7 +23,7 @@ export const PaddedSlider = (props: SliderFieldProps) => {
       if (parseFloat(window.getComputedStyle(el).minWidth) >= 270) el.style.minWidth = '0';
     });
   }, []);
-  return <div ref={ref} className="ytm-compact-slider" style={{ width:'100%', minWidth:0, maxWidth:'100%' }}>
+  return <div ref={ref} className="ytm-compact-slider" style={{ width:'100%', minWidth:0, maxWidth:'100%', borderRadius:8 }}>
     <SliderField {...props} />
   </div>;
 };

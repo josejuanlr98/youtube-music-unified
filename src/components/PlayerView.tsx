@@ -1,6 +1,6 @@
 import { DialogButton, Focusable, Navigation } from '@decky/ui';
 import { call } from '@decky/api';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FaPause, FaRandom, FaMusic, FaStop, FaAlignLeft } from 'react-icons/fa';
 import { IoPlay, IoPlaySkipBack, IoPlaySkipForward } from 'react-icons/io5';
 import { MdRepeat, MdRepeatOne, MdCastConnected } from 'react-icons/md';
@@ -9,8 +9,11 @@ import { usePlayer } from '../context/PlayerContext';
 import { togglePlayback, playNext, playPrevious, stopAllPlayback, seekPlayback } from '../services/audioManager';
 import { VolumeSlider, PaddedSlider } from './VolumeSlider';
 import { LyricsPanel, LYRICS_ROUTE } from './LyricsPage';
+import { SiYoutubemusic } from 'react-icons/si';
+import { useArtworkAccent } from '../services/artworkPalette';
+import { ThemeScope } from './ThemeScope';
 
-const button: React.CSSProperties = { flex:'1 1 0', width:0, minWidth:0, minHeight:28, maxHeight:34, height:30, boxSizing:'border-box', lineHeight:'normal', fontSize:12, padding:'0 8px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, margin:0 };
+const button: React.CSSProperties = { flex:'1 1 0', width:0, minWidth:0, minHeight:28, maxHeight:34, height:30, borderRadius:8, boxSizing:'border-box', lineHeight:'normal', fontSize:12, padding:'0 8px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, margin:0 };
 const formatTime = (value: number) => { const total = Math.max(0, Math.floor(value || 0)); return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`; };
 
 export const PlayerView = () => {
@@ -19,6 +22,8 @@ export const PlayerView = () => {
   const [stopping, setStopping] = useState(false);
   const [error, setError] = useState('');
   const [showLyrics, setShowLyrics] = useState(false);
+  const viewRef = useRef<HTMLDivElement>(null);
+  const accent = useArtworkAccent(track?.albumArt, viewRef);
   useEffect(() => {
     const returnToPlayer = () => setShowLyrics(false);
     window.addEventListener('ytm-return-player', returnToPlayer);
@@ -54,20 +59,18 @@ export const PlayerView = () => {
   if (showLyrics && authenticated) return <LyricsPanel onBack={() => setShowLyrics(false)} />;
 
   return (
-    <Focusable onSecondaryActionDescription={track && authenticated ? 'Fullscreen lyrics' : undefined}
+    <Focusable ref={viewRef} onSecondaryActionDescription={track && authenticated ? 'Fullscreen lyrics' : undefined}
       onSecondaryButton={track && authenticated ? event => { event.preventDefault(); event.stopPropagation(); Navigation.CloseSideMenus(); Navigation.Navigate(LYRICS_ROUTE); } : undefined}
-      className="ytm-ui ytm-player-view" style={{ width:'100%', maxWidth:'100%', minWidth:0, minHeight:0, boxSizing:'border-box', padding:'2px 2px 6px', display:'flex', flexDirection:'column', gap:6 }}>
-      <div className="ytm-card" style={{ padding:'10px 10px 12px', flexShrink:0, minWidth:0 }}>
-        <div className="ytm-eyebrow" style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', gap:2, marginBottom:12, width:'100%' }}>
-          <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-            {castConnected && <MdCastConnected size={13} />}
-            {castConnected ? 'Cast connected' : isPlaying ? 'Now playing' : track ? 'Ready to play' : authenticated ? 'Your music, on Deck' : 'Cast only'}
-          </div>
-          {castConnected && castSenderName && <div className="ytm-muted" style={{ fontSize:10, fontWeight:500, letterSpacing:0, textTransform:'none', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>From {castSenderName}</div>}
-        </div>
+      className="ytm-ui ytm-player-view" style={{ '--ytm-cover-accent':accent, width:'100%', maxWidth:'100%', minWidth:0, minHeight:0, boxSizing:'border-box', padding:'2px 2px 6px', display:'flex', flexDirection:'column', gap:6 } as React.CSSProperties}>
+      <ThemeScope />
+      <div className="ytm-card" style={{ position:'relative', padding:'10px 34px 12px 10px', flexShrink:0, minWidth:0 }}>
+          <SiYoutubemusic className="ytm-cover-logo" size={20} aria-label="YouTube Music" style={{ position:'absolute', right:10, top:10, color:`rgb(${accent})` }} />
+          {castConnected && <div className="ytm-muted" style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:6, fontSize:11, minWidth:0, marginBottom:8 }}>
+            <MdCastConnected size={13} style={{ flexShrink:0 }} /><span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{castSenderName || 'Connected device'}</span>
+          </div>}
         <div style={{ display:'flex', gap:10, alignItems:'center', justifyContent:'center', minWidth:0 }}>
-          {track?.albumArt ? <img src={track.albumArt} alt="Album art" style={{ width:'clamp(52px, 15vw, 64px)', height:'clamp(52px, 15vw, 64px)', borderRadius:9, objectFit:'cover', flexShrink:0 }} />
-            : <div style={{ width:'clamp(52px, 15vw, 64px)', height:'clamp(52px, 15vw, 64px)', borderRadius:9, background:'#344052', display:'grid', placeItems:'center', flexShrink:0 }}><FaMusic size={28} /></div>}
+          {track?.albumArt ? <img src={track.albumArt} alt="Album art" style={{ width:'clamp(52px, 15vw, 64px)', height:'clamp(52px, 15vw, 64px)', borderRadius:4, objectFit:'cover', flexShrink:0 }} />
+            : <div style={{ width:'clamp(52px, 15vw, 64px)', height:'clamp(52px, 15vw, 64px)', borderRadius:4, background:'#344052', display:'grid', placeItems:'center', flexShrink:0 }}><FaMusic size={28} /></div>}
           <div style={{ minWidth:0, maxWidth:'calc(100% - 74px)', textAlign:'center' }}>
             <div style={{ fontSize:13, fontWeight:700, lineHeight:1.3, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{track?.title ?? 'Nothing playing'}</div>
             <div className="ytm-muted" style={{ fontSize:12, marginTop:5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track?.artist || (authenticated ? 'Find a song in Library' : 'Cast from your device')}</div>
@@ -90,13 +93,13 @@ export const PlayerView = () => {
 
       <Focusable flow-children="horizontal" style={{ display:'flex', gap:6, minWidth:0, flexShrink:0 }}>
         <DialogButton className="ytm-button" style={{ ...button, height:34 }} disabled={!track || stopping} onOKActionDescription="Previous" onClick={() => void run(playPrevious)}><IoPlaySkipBack size={19} /></DialogButton>
-        <DialogButton className="ytm-button ytm-primary" style={{ ...button, flex:1.35, height:34 }} disabled={!track || stopping} onOKActionDescription={isPlaying ? 'Pause' : 'Play'} onClick={togglePlayback}>{isPlaying ? <FaPause size={18} /> : <IoPlay size={22} />}</DialogButton>
+        <DialogButton className="ytm-button" style={{ ...button, flex:1.35, height:34 }} disabled={!track || stopping} onOKActionDescription={isPlaying ? 'Pause' : 'Play'} onClick={togglePlayback}>{isPlaying ? <FaPause size={18} /> : <IoPlay size={22} />}</DialogButton>
         <DialogButton className="ytm-button" style={{ ...button, height:34 }} disabled={!track || stopping} onOKActionDescription="Next" onClick={() => void run(playNext)}><IoPlaySkipForward size={19} /></DialogButton>
       </Focusable>
 
       <Focusable flow-children="horizontal" style={{ display:'flex', gap:6, minWidth:0, flexShrink:0 }}>
-        <DialogButton className={`ytm-button ${rating === 'LIKE' ? 'ytm-selected' : ''}`} style={button} disabled={!track || !authenticated} onOKActionDescription="Like" onClick={() => void run(() => rate('LIKE'))}>{rating === 'LIKE' ? <AiFillLike size={18} /> : <AiOutlineLike size={18} />}</DialogButton>
-        <DialogButton className={`ytm-button ${rating === 'DISLIKE' ? 'ytm-selected' : ''}`} style={button} disabled={!track || !authenticated} onOKActionDescription="Dislike" onClick={() => void run(() => rate('DISLIKE'))}>{rating === 'DISLIKE' ? <AiFillDislike size={18} /> : <AiOutlineDislike size={18} />}</DialogButton>
+        <DialogButton className={`ytm-button ytm-rating-button ${rating === 'LIKE' ? 'ytm-selected' : ''}`} style={button} disabled={!track || !authenticated} onOKActionDescription="Like" onClick={() => void run(() => rate('LIKE'))}>{rating === 'LIKE' ? <AiFillLike size={18} /> : <AiOutlineLike size={18} />}</DialogButton>
+        <DialogButton className={`ytm-button ytm-rating-button ${rating === 'DISLIKE' ? 'ytm-selected' : ''}`} style={button} disabled={!track || !authenticated} onOKActionDescription="Dislike" onClick={() => void run(() => rate('DISLIKE'))}>{rating === 'DISLIKE' ? <AiFillDislike size={18} /> : <AiOutlineDislike size={18} />}</DialogButton>
         <DialogButton className="ytm-button" style={{ ...button, flex:1.6 }} disabled={!track || !authenticated} onClick={() => setShowLyrics(true)}><FaAlignLeft size={14} /> Lyrics</DialogButton>
       </Focusable>
 

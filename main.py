@@ -7,6 +7,9 @@ import shutil
 import signal
 import subprocess
 import logging
+import base64
+import urllib.parse
+import urllib.request
 
 _PY_MODULES = os.path.join(decky.DECKY_PLUGIN_DIR, "py_modules")
 BROWSER_AUTH_FILE = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, "browser.json")
@@ -54,6 +57,38 @@ class Plugin:
     volume = 1.0
     cast_device_name = "SteamDeck"
     notification_settings = {"connections": True, "tracks": True, "connectionSound": False, "trackSound": False}
+
+    async def get_artwork_data_url(self, url):
+        """Return only small Google-hosted cover art for local color sampling."""
+        try:
+            parsed = urllib.parse.urlparse(str(url or ''))
+            hostname = (parsed.hostname or '').lower()
+            allowed = parsed.scheme == 'https' and (
+                hostname.endswith('.googleusercontent.com') or hostname.endswith('.ggpht.com') or hostname.endswith('.ytimg.com'))
+            if not allowed:
+                return {}
+
+            def fetch():
+                request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(request, timeout=8) as response:
+                    final = urllib.parse.urlparse(response.geturl())
+                    final_host = (final.hostname or '').lower()
+                    if final.scheme != 'https' or not (
+                            final_host.endswith('.googleusercontent.com') or final_host.endswith('.ggpht.com') or final_host.endswith('.ytimg.com')):
+                        return None
+                    mime = (response.headers.get_content_type() or '').lower()
+                    if mime not in ('image/jpeg', 'image/png', 'image/webp'):
+                        return None
+                    content = response.read(524289)
+                    if len(content) > 524288:
+                        return None
+                    return f"data:{mime};base64,{base64.b64encode(content).decode('ascii')}"
+
+            data_url = await asyncio.to_thread(fetch)
+            return {"dataUrl": data_url} if data_url else {}
+        except Exception as error:
+            decky.logger.debug(f"Artwork palette fallback failed: {error}")
+            return {}
 
     # ── Authentication (browser cookies) ───────────────────────────
 

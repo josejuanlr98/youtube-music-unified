@@ -108,6 +108,21 @@ vm.runInNewContext(ts.transpileModule(source, { compilerOptions:{ module:ts.Modu
   resumeNotifications(); resumeNotifications();
   listeners.sender('Visible after exit');
   assert.equal(toasts.length, beforeFullscreen + 1, 'exit restores saved notification preferences');
+  let visible = true;
+  const panel = { isConnected:true, parentElement:null, getAttribute:()=>null,
+    ownerDocument:{ visibilityState:'visible', defaultView:{ innerWidth:1280, innerHeight:800, getComputedStyle:()=>({ display:visible ? 'block' : 'none' }) } },
+    getClientRects:()=>[{}], getBoundingClientRect:()=>({ top:80,left:800,bottom:700,right:1250 }) };
+  const unregister = exportsObject.registerNotificationPanel(panel);
+  const beforePanel = toasts.length;
+  listeners.sender('Visible panel'); listeners.playing({ ...track, videoId:'panel-song' });
+  assert.equal(toasts.length, beforePanel, 'visible tab suppresses both notification types');
+  visible = false;
+  listeners.sender('Hidden mounted panel');
+  assert.equal(toasts.length, beforePanel + 1, 'hidden mounted tab does not suppress notifications');
+  visible = true;
+  unregister();
+  listeners.sender('Panel closed');
+  assert.equal(toasts.length, beforePanel + 2, 'unmount restores notifications');
   stopAgain();
   console.log('PASS notifications: silent defaults, independent toggles/sounds, metadata, deduplication, bounded toasts and cleanup');
 })().catch(error => { console.error(error); process.exitCode = 1; });
